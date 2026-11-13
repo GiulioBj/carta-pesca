@@ -33,6 +33,7 @@ button{cursor:pointer}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 header{background:var(--bar);color:#fff;padding:calc(8px + env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) 8px max(10px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:6px}
 html{background:var(--bar)}
+:root.standalone header{padding-top:calc(34px + env(safe-area-inset-top))}
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .top h1{font-size:18px;text-transform:uppercase;white-space:nowrap}
 .top span{display:flex;gap:6px}
@@ -70,19 +71,24 @@ html{background:var(--bar)}
 #lgbody .key.ln{height:3px;width:14px;vertical-align:3px}
 #lgbody .key.rd{border-radius:50%}
 body.full #legend{top:calc(104px + env(safe-area-inset-top))}
-#mapwhen{position:absolute;left:58px;right:64px;top:10px;z-index:500;display:flex;gap:2px;align-items:center;background:var(--bar);border-radius:8px;padding:2px 8px 2px 4px;box-shadow:0 1px 5px rgba(0,0,0,.4)}
+#mapwhen{position:absolute;left:58px;right:88px;top:10px;z-index:500;display:flex;gap:2px;align-items:center;background:var(--bar);border-radius:8px;padding:2px 8px 2px 4px;box-shadow:0 1px 5px rgba(0,0,0,.4)}
 #mapwhen select{flex:1;min-width:0;background:transparent;color:#fff;border:0;font:600 16px var(--body);min-height:36px;padding:0 2px}
 #mapwhen select option{color:#000}
 #mapscore{color:#fff;font:700 18px var(--display);background:var(--accent);border-radius:6px;padding:1px 7px;font-variant-numeric:tabular-nums}
 body.full #mapwhen{top:calc(10px + env(safe-area-inset-top))}
-#opbtn{position:absolute;right:10px;top:64px;z-index:500;background:var(--card);color:var(--ink);border:2px solid rgba(0,0,0,.25);border-radius:8px;min-height:40px;padding:0 10px;font:600 13px var(--body)}
-#oppanel{position:absolute;right:10px;top:110px;z-index:600;width:min(260px,calc(100% - 20px));background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:6px;box-shadow:0 3px 12px rgba(0,0,0,.4);font-size:14px}
+#opbtn{position:absolute;right:10px;top:10px;z-index:500;background:var(--card);color:var(--ink);border:2px solid rgba(0,0,0,.25);border-radius:8px;min-height:42px;padding:0 12px;font:600 14px var(--body)}
+#oppanel{position:absolute;right:10px;top:60px;z-index:700;width:min(310px,calc(100% - 20px));max-height:calc(100% - 140px);overflow-y:auto;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:6px;box-shadow:0 3px 12px rgba(0,0,0,.4);font-size:14px}
 #oppanel[hidden]{display:none}
-#oppanel label{display:grid;gap:2px;font-size:13px}
-#oppanel input[type=range]{width:100%;height:30px;accent-color:var(--accent)}
+.lrow{display:grid;grid-template-columns:1fr 92px;align-items:center;gap:8px;min-height:36px}
+.lrow label{display:flex;align-items:center;gap:8px}
+.lrow input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent);flex:none}
+.lrow input[type=range]{width:100%;height:30px;accent-color:var(--accent)}
+.seg3{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg3 button{flex:1;border:0;background:none;min-height:38px;font-weight:500}
+.seg3 button[aria-pressed="true"]{background:var(--ink);color:var(--card);font-weight:600}
 #oppanel .acts{margin-top:2px}
-body.full #opbtn{top:calc(64px + env(safe-area-inset-top))}
-body.full #oppanel{top:calc(110px + env(safe-area-inset-top))}
+body.full #opbtn{top:calc(10px + env(safe-area-inset-top))}
+body.full #oppanel{top:calc(60px + env(safe-area-inset-top))}
 #fs{position:absolute;right:10px;bottom:30px;z-index:500;background:var(--card);color:var(--ink);border:2px solid var(--ink);border-radius:999px;min-height:44px;padding:0 13px;font:600 14px var(--body);box-shadow:0 2px 8px rgba(0,0,0,.35)}
 .leaflet-control-attribution{font-size:9px!important}
 .leaflet-touch .leaflet-bar a{width:38px;height:38px;line-height:38px}
@@ -184,6 +190,16 @@ svg text{font:11px var(--body);fill:var(--muted)}
 .logm{background:#1f8a5b;border:2px solid #fff;border-radius:50%}
 .me{background:#1a73e8;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 6px rgba(26,115,232,.25)}
 .key{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-1px;margin-right:3px}
+#psheet{position:absolute;left:8px;right:8px;bottom:8px;z-index:650;max-height:72%;overflow-y:auto;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:10px 12px 12px;box-shadow:0 -2px 14px rgba(0,0,0,.45)}
+#psheet[hidden]{display:none}
+#pclose{float:right;background:none;border:1px solid var(--line);border-radius:999px;min-height:34px;padding:0 12px;font-size:13.5px}
+body.full #psheet{bottom:calc(8px + env(safe-area-inset-bottom))}
+.pinfo{font:14px/1.4 var(--body);color:var(--ink)}
+.pinfo>b{font:700 17px var(--display);display:block;margin-bottom:2px}
+.pinfo div{margin:4px 0}
+.pinfo .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pinfo .btn{min-height:40px;padding:0 11px;font-size:14px}
+.leaflet-popup-content{margin:12px 14px}
 .isol{background:rgba(255,255,255,.85);border-radius:3px;font:600 11px var(--body);color:#0b4a63;padding:0 3px;white-space:nowrap}
 footer{font-size:12.5px;color:var(--muted)}
 footer a{color:var(--sea)}
@@ -212,7 +228,7 @@ footer a{color:var(--sea)}
     <div id="map"></div>
     <div class="cross" aria-hidden="true"></div>
     <div id="trackbar" hidden><span><b id="trackbig"></b><br><span id="tracktxt"></span></span><button id="trackstop" type="button">Stop</button></div>
-    <button id="setpt" type="button">Imposta qui il punto</button>
+    <button id="setpt" type="button">Imposta target qui</button>
     <button id="fs" type="button" aria-pressed="false">Schermo intero</button>
     <div id="mapwhen"><select id="mapday" aria-label="Giorno mostrato sulla mappa"></select><select id="maphour" aria-label="Ora mostrata sulla mappa"></select><span id="mapscore"></span></div>
     <div id="legend">
@@ -226,21 +242,29 @@ footer a{color:var(--sea)}
         <span><i class="key" style="background:#b5651d;opacity:.6"></i>barena, velma, secca</span>
         <span><i class="key rd" style="background:#e8590c"></i>spot consigliato</span>
         <span><i class="key rd" style="background:#fff;border:1.5px solid #0e2a3b"></i>molo, diga, foce, relitto</span>
-        <span><i class="key rd" style="background:#0e2a3b"></i>tuo punto di riferimento</span>
+        <span><i class="key rd" style="background:#0e2a3b"></i>tuo punto target</span>
         <span><i class="key" style="background:#f2c200;border:1.5px solid #0e2a3b"></i>punto salvato</span>
         <span><i class="key rd" style="background:#1f8a5b"></i>cattura del diario</span>
       </div>
     </div>
-    <button id="opbtn" type="button" aria-expanded="false">Trasparenze</button>
+    <div id="psheet" hidden><button id="pclose" type="button" aria-label="Chiudi le informazioni sul punto">Chiudi ×</button><div id="pbody"></div></div>
+    <button id="opbtn" type="button" aria-expanded="false">Livelli</button>
     <div id="oppanel" hidden>
-      <b>Trasparenza dei livelli</b>
-      <label>Zone probabili <input type="range" id="op-heat" min="0" max="100" step="5"></label>
-      <label>Bassi fondali <input type="range" id="op-nav" min="0" max="100" step="5"></label>
-      <label>Isobate <input type="range" id="op-iso" min="0" max="100" step="5"></label>
-      <label>Canali, barene, secche <input type="range" id="op-osm" min="0" max="100" step="5"></label>
-      <label>Batimetria a colori <input type="range" id="op-emod" min="0" max="100" step="5"></label>
-      <div class="acts"><button class="btn" id="op-sat" type="button">Sfondo satellite</button><button class="btn" id="op-hide" type="button">Nascondi tutto</button></div>
-      <small>Porta a zero i livelli e usa il satellite per vedere il fondo, poi rialzali per confrontare.</small>
+      <b>Sfondo</b>
+      <div class="seg3" id="basesel"><button type="button" data-b="Carta">Carta</button><button type="button" data-b="Satellite">Satellite</button><button type="button" data-b="Carta topografica">Rilievo</button></div>
+      <b>Livelli e trasparenza</b>
+      <div class="lrow"><label><input type="checkbox" id="ly-heat"> Zone probabili</label><input type="range" id="op-heat" min="0" max="100" step="5" aria-label="Trasparenza: Zone probabili"></div>
+      <div class="lrow"><label><input type="checkbox" id="ly-nav"> Bassi fondali</label><input type="range" id="op-nav" min="0" max="100" step="5" aria-label="Trasparenza: Bassi fondali"></div>
+      <div class="lrow"><label><input type="checkbox" id="ly-iso"> Isobate</label><input type="range" id="op-iso" min="0" max="100" step="5" aria-label="Trasparenza: Isobate"></div>
+      <div class="lrow"><label><input type="checkbox" id="ly-osm"> Canali, barene, secche</label><input type="range" id="op-osm" min="0" max="100" step="5" aria-label="Trasparenza: Canali, barene, secche"></div>
+      <div class="lrow"><label><input type="checkbox" id="ly-emod"> Batimetria a colori</label><input type="range" id="op-emod" min="0" max="100" step="5" aria-label="Trasparenza: Batimetria a colori"></div>
+      <div class="lrow"><label><input type="checkbox" id="ly-spot"> Spot consigliati</label></div>
+      <div class="lrow"><label><input type="checkbox" id="ly-str"> Moli, dighe, foci, relitti</label></div>
+      <div class="lrow"><label><input type="checkbox" id="ly-fav"> I miei punti</label></div>
+      <div class="lrow"><label><input type="checkbox" id="ly-log"> Le mie catture</label></div>
+      <div class="lrow"><label><input type="checkbox" id="ly-sea"> Segnalamenti nautici</label></div>
+      <div class="acts"><button class="btn" id="op-hide" type="button">Nascondi tutto</button><button class="btn pri" id="op-close" type="button">Chiudi</button></div>
+      <small>Con il satellite e i livelli abbassati vedi il fondo; rialzali per confrontare.</small>
     </div>
   </div>
   <main>
@@ -553,22 +577,6 @@ async function loadGrid(lat,lon,R,run){
   }
   await Promise.all(Array.from({length:6},worker));
   if(!ok)return null;
-  // maschera di terra da un modello del terreno a 90 m: evita zone e bassi fondali disegnati sopra città e barene
-  if(run===state.run)setStatus('Controllo la linea di costa…');
-  const pts=[];for(let i=0;i<N;i++)for(let j=0;j<N;j++)pts.push([i,j]);
-  const chunks=[];for(let k=0;k<pts.length;k+=100)chunks.push(pts.slice(k,k+100));
-  let cn=0;
-  async function landWorker(){
-    while(cn<chunks.length){
-      const c=chunks[cn++];
-      try{
-        const r=await fetch('https://api.open-meteo.com/v1/elevation?latitude='+c.map(p=>lats[p[0]].toFixed(5)).join(',')+'&longitude='+c.map(p=>lons[p[1]].toFixed(5)).join(','));
-        const e=(await r.json()).elevation;
-        if(Array.isArray(e))c.forEach((p,k)=>{const el=e[k],v=z[p[0]][p[1]];if(typeof el==='number'&&el>0.6&&!(v<-3))z[p[0]][p[1]]=isNaN(v)?el:Math.max(v,el)});
-      }catch(e){}
-    }
-  }
-  await Promise.all(Array.from({length:5},landWorker));
   return deriveGrid({lats,lons,z,cell:2*R/(N-1)});
 }
 function deriveGrid(g){
@@ -595,9 +603,10 @@ function deriveGrid(g){
 async function loadMeteo(lat,lon){
   const q=`latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&timeformat=unixtime&timezone=auto&forecast_days=7&past_days=2`;
   const js=u=>fetch(u).then(r=>r.ok?r.json():Promise.reject(new Error('http')));
+  const fu='https://api.open-meteo.com/v1/forecast?'+q+'&wind_speed_unit=kn&hourly=temperature_2m,precipitation,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m';
   const mu='https://marine-api.open-meteo.com/v1/marine?'+q+'&cell_selection=sea&hourly=wave_height,wave_direction,wave_period';
   const [F,M]=await Promise.all([
-    js('https://api.open-meteo.com/v1/forecast?'+q+'&wind_speed_unit=kn&hourly=temperature_2m,precipitation,precipitation_probability,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m').catch(()=>null),
+    js(fu+',precipitation_probability,weather_code').catch(()=>js(fu).catch(()=>new Promise(r=>setTimeout(r,1500)).then(()=>js(fu)).catch(()=>null))),
     js(mu+',sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction').catch(()=>js(mu).catch(()=>null))
   ]);
   const src=F||M;if(!src||!src.hourly||!src.hourly.time)return null;
@@ -624,11 +633,11 @@ async function loadMeteo(lat,lon){
 }
 async function loadStructs(lat,lon,R){
   const dLa=R/MLAT,dLo=R/mlon(lat),bb=[lat-dLa,lon-dLo,lat+dLa,lon+dLo].map(v=>v.toFixed(5)).join(',');
-  const q=`[out:json][timeout:20];(way["man_made"~"^(breakwater|groyne|pier)$"](${bb});node["seamark:type"~"^(wreck|rock|platform)$"](${bb});node["natural"="reef"](${bb});node["man_made"="offshore_platform"](${bb});way["man_made"="offshore_platform"](${bb});way["seamark:type"="marine_farm"](${bb});way["waterway"="river"](${bb});way["waterway"~"^(canal|fairway|tidal_channel)$"](${bb});way["seamark:type"="fairway"](${bb});way["natural"="shoal"](${bb});way["wetland"~"^(saltmarsh|tidalflat)$"](${bb}););out geom 900;`;
+  const q=`[out:json][timeout:20];(way["man_made"~"^(breakwater|groyne|pier)$"](${bb});node["seamark:type"~"^(wreck|rock|platform)$"](${bb});node["natural"="reef"](${bb});node["man_made"="offshore_platform"](${bb});way["man_made"="offshore_platform"](${bb});way["seamark:type"="marine_farm"](${bb});way["waterway"="river"](${bb});way["waterway"~"^(canal|fairway|tidal_channel)$"](${bb});way["seamark:type"="fairway"](${bb});way["natural"="shoal"](${bb});way["wetland"~"^(saltmarsh|tidalflat)$"](${bb});way["natural"="coastline"](${bb}););out geom 3000;`;
   const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),22000);
   try{
     const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'},signal:ac.signal});
-    const j=await r.json(),pts=[],lines=[],areas=[];
+    const j=await r.json(),pts=[],lines=[],areas=[],coast=[];
     for(const e of j.elements||[]){
       const tg=e.tags||{},name=tg.name||tg['seamark:name']||'',sm=tg['seamark:type'];
       if(e.type==='node'){
@@ -636,7 +645,8 @@ async function loadStructs(lat,lon,R){
         pts.push({lat:e.lat,lon:e.lon,type,name});
       }else if(e.geometry&&e.geometry.length){
         const gm=e.geometry.filter(Boolean),ends=[gm[0],gm[gm.length-1]],mid=gm[gm.length>>1],ll=gm.map(p=>[p.lat,p.lon]);
-        if(tg.waterway==='river'){for(const p of ends)pts.push({lat:p.lat,lon:p.lon,type:'foce',name,river:true})}
+        if(tg.natural==='coastline')coast.push(ll);
+        else if(tg.waterway==='river'){for(const p of ends)pts.push({lat:p.lat,lon:p.lon,type:'foce',name,river:true})}
         else if(tg.waterway||sm==='fairway'){lines.push(ll);const st=Math.max(1,Math.floor(gm.length/6));for(let k=0;k<gm.length;k+=st)pts.push({lat:gm[k].lat,lon:gm[k].lon,type:'canale',name})}
         else if(tg.natural==='shoal'||tg.wetland)areas.push({ll,kind:tg.natural==='shoal'?'secca':tg.wetland==='saltmarsh'?'barena':'velma',name});
         else if(sm==='marine_farm'){for(const p of [gm[0],mid])pts.push({lat:p.lat,lon:p.lon,type:'allevamento',name});lines.push(ll)}
@@ -647,8 +657,25 @@ async function loadStructs(lat,lon,R){
         }
       }
     }
-    return {pts,lines,areas};
+    return {pts,lines,areas,coast};
   }finally{clearTimeout(tm)}
+}
+// In OpenStreetMap la linea di costa ha sempre la terra a sinistra: per ogni cella guardo da che lato sta del tratto più vicino.
+function applyCoast(g,coast){
+  const kx=mlon(g.lats[N>>1]),ky=MLAT,segs=[];
+  for(const w of coast||[])for(let k=0;k<w.length-1;k++)segs.push([w[k][1]*kx,w[k][0]*ky,w[k+1][1]*kx,w[k+1][0]*ky]);
+  if(segs.length<2||segs.length>80000)return 0;
+  let changed=0;const lim=(g.cell*.2)**2;
+  for(let i=0;i<N;i++)for(let j=0;j<N;j++){
+    const v=g.z[i][j];if(isNaN(v)||v>=-.2||v<-3)continue;       // già terra, o canale profondo: non tocco
+    const px=g.lons[j]*kx,py=g.lats[i]*ky;let best=Infinity,side=0;
+    for(const s of segs){
+      const dx=s[2]-s[0],dy=s[3]-s[1],l2=dx*dx+dy*dy||1e-9,t=Math.max(0,Math.min(1,((px-s[0])*dx+(py-s[1])*dy)/l2)),qx=s[0]+t*dx-px,qy=s[1]+t*dy-py,dd=qx*qx+qy*qy;
+      if(dd<best){best=dd;side=dx*(py-s[1])-dy*(px-s[0])}
+    }
+    if(side>0&&best>lim){g.z[i][j]=1;changed++}
+  }
+  return changed;
 }
 function filterStructs(st,g){
   if(!g)return st.filter(s=>!s.river);
@@ -756,7 +783,7 @@ function drift(h){
 
 /* ---------- Spot ---------- */
 function findSpots(d,sp,mode){
-  const g=d.grid,S=SPECIES[sp];d.heat=[];if(!g)return [];
+  const g=d.grid,S=SPECIES[sp];d.heat=[];d.heatIdx={};d.heatMax=0;if(!g)return [];
   const st=d.structs.filter(s=>S.structs.includes(s.type)),cand=[];
   for(let i=0;i<N;i++)for(let j=0;j<N;j++){
     if(!g.water[i][j])continue;
@@ -771,7 +798,7 @@ function findSpots(d,sp,mode){
     const p=g.nl[i][j],brgSea=p&&dl<=1500?bearing(g.lats[p[0]],g.lons[p[1]],la,lo):null;
     cand.push({i,j,la,lo,dep,sl,ds,near,dl,score,sD,brgSea});
   }
-  d.heat=cand.slice();
+  d.heat=cand.slice();d.heatIdx={};d.heatMax=0;for(const c of cand){d.heatIdx[c.i*N+c.j]=c;if(c.score>d.heatMax)d.heatMax=c.score}
   cand.sort((a,b)=>b.score-a.score);
   const minSep=Math.max(300,d.R/5),pick=[];
   for(const c of cand){if(pick.length>=6)break;if(pick.every(p=>dist(p.la,p.lo,c.la,c.lo)>=minSep))pick.push(c)}
@@ -957,7 +984,7 @@ function wxCard(Hd,title){
 }
 
 /* ---------- Mappa ---------- */
-let heatRenderer,emodLayer,BASE,heatLayer,map,refMarker,areaRect,isoLayer,spotLayer,structLayer,favLayer,logLayer,navLayer,canalLayer,hazLayer,navRenderer;
+let LAY,heatRenderer,emodLayer,BASE,heatLayer,map,refMarker,areaRect,isoLayer,spotLayer,structLayer,favLayer,logLayer,navLayer,canalLayer,hazLayer,navRenderer;
 const LEVELS=[2,5,10,15,20,30,50,75,100,200],ISOCOL=['#58b6cf','#3aa0bd','#2289a8','#167592','#0f627d','#0b5069','#083f55','#062f42','#042231','#02161f'];
 function initMap(){
   map=L.map('map').setView([state.lat,state.lon],13);
@@ -967,20 +994,56 @@ function initMap(){
     'Satellite':L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,attribution:'Immagini © Esri'}),
     'Carta topografica':L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,attribution:'© Esri'})
   };
-  base['Carta'].addTo(map);
-  navRenderer=L.canvas({pane:'nav',padding:.3});heatRenderer=L.canvas({pane:'heat',padding:.3});heatLayer=L.layerGroup().addTo(map);navLayer=L.layerGroup().addTo(map);hazLayer=L.layerGroup().addTo(map);canalLayer=L.layerGroup().addTo(map);
-  isoLayer=L.layerGroup().addTo(map);structLayer=L.layerGroup().addTo(map);logLayer=L.layerGroup().addTo(map);favLayer=L.layerGroup().addTo(map);spotLayer=L.layerGroup().addTo(map);
-  const over={
-    'Zone probabili per la specie':heatLayer,'Bassi fondali per la tua barca':navLayer,'Canali segnati (OSM)':canalLayer,'Barene, velme e secche (OSM)':hazLayer,'Isobate calcolate':isoLayer,'Spot consigliati':spotLayer,'Moli, dighe, foci, relitti':structLayer,'I miei punti':favLayer,'Le mie catture':logLayer,
-    'Batimetria a colori (EMODnet)':emodLayer=L.tileLayer.wms('https://ows.emodnet-bathymetry.eu/wms',{layers:'emodnet:mean_multicolour',format:'image/png',transparent:true,opacity:.55,attribution:'EMODnet Bathymetry'}),
-    'Segnalamenti (OpenSeaMap)':L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenSeaMap'}).addTo(map)
-  };
-  L.control.layers(base,over,{collapsed:true}).addTo(map);
+  Object.values(BASE).forEach(l=>l.setZIndex(1));
+  navRenderer=L.canvas({pane:'nav',padding:.3});heatRenderer=L.canvas({pane:'heat',padding:.3});
+  heatLayer=L.layerGroup();navLayer=L.layerGroup();hazLayer=L.layerGroup();canalLayer=L.layerGroup();isoLayer=L.layerGroup();structLayer=L.layerGroup();logLayer=L.layerGroup();favLayer=L.layerGroup();spotLayer=L.layerGroup();
+  emodLayer=L.tileLayer.wms('https://ows.emodnet-bathymetry.eu/wms',{layers:'emodnet:mean_multicolour',format:'image/png',transparent:true,opacity:.55,zIndex:5,attribution:'EMODnet Bathymetry'});
+  const seaLayer=L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',{maxZoom:18,zIndex:6,attribution:'© OpenSeaMap'});
+  LAY={heat:[heatLayer],nav:[navLayer],iso:[isoLayer],osm:[hazLayer,canalLayer],emod:[emodLayer],str:[structLayer],log:[logLayer],fav:[favLayer],spot:[spotLayer],sea:[seaLayer]};
   L.control.scale({imperial:false}).addTo(map);
-  refMarker=L.marker([state.lat,state.lon],{draggable:true,zIndexOffset:1000,icon:L.divIcon({className:'ref',iconSize:[18,18],iconAnchor:[9,9]})}).addTo(map).bindTooltip('Punto di riferimento');
+  refMarker=L.marker([state.lat,state.lon],{draggable:true,zIndexOffset:1000,icon:L.divIcon({className:'ref',iconSize:[18,18],iconAnchor:[9,9]})}).addTo(map).bindTooltip('Punto target');
   areaRect=L.rectangle([[0,0],[0,0]],{color:'#0e2a3b',weight:1.5,dashArray:'6 5',fill:false,interactive:false}).addTo(map);
   refMarker.on('dragend',()=>{const p=refMarker.getLatLng();setPoint(p.lat,p.lng,false)});
-  map.on('click',e=>setPoint(e.latlng.lat,e.latlng.lng,false));
+  map.on('click',e=>showInfo(e.latlng.lat,e.latlng.lng));
+
+}
+/* ---------- Informazioni sul punto toccato ---------- */
+let infoMark=null,infoLL=null;
+function closeInfo(){infoLL=null;$('#psheet').hidden=true;if(infoMark){infoMark.remove();infoMark=null}}
+function pointInfo(la,lo){
+  const d=data,S=SPECIES[state.sp],h=d.H[state.selHour]||d.H[0],g=d.grid,ce=g?cellAt(g,la,lo):null,rows=[];
+  let dep=null;
+  if(ce){
+    const [i,j]=ce,v=g.dep[i][j];
+    if(isNaN(v))rows.push('Fondale: dato non disponibile in questo punto.');
+    else if(!g.water[i][j])rows.push('Terra o fondale emerso.');
+    else{
+      dep=v;const lvl=h.level==null?0:h.level,eff=Math.max(0,v+lvl),c=d.heatIdx[i*N+j],rel=c&&d.heatMax?c.score/d.heatMax:0;
+      rows.push(`Fondale <b>${n1(v)} m</b>${h.level!=null?`; con la marea di quell'ora circa <b>${n1(eff)} m</b>`:''}`);
+      if(state.mode==='barca')rows.push(eff<state.draft+.2?'<span class="pill warn">Non passi con il tuo pescaggio</span>':eff<state.draft+.7?'<span class="pill warn">Margine ridotto sotto la chiglia</span>':'<span class="pill">Navigabile per il tuo pescaggio</span>');
+      rows.push(`${S.name}: zona <b>${rel>=.87?'ad alta probabilità':rel>=.73?'buona':rel>=.6?'possibile':'poco adatta'}</b>${c?`, idoneità ${Math.round(c.score*100)}/100`:`: si cerca tra ${S.depth[1]} e ${S.depth[2]} m`}`);
+      if(g.slope[i][j]>=S.slopeRef*.6)rows.push(`Scalino: ${n1(g.slope[i][j])} m di dislivello ogni 100 m`);
+      if(c&&c.near&&c.ds<=600)rows.push(`${STRUCT_LABEL[c.near.type]}${c.near.name?' ('+esc(c.near.name)+')':''} a ${kmLabel(c.ds)}`);
+      if(isFinite(g.dLand[i][j])&&g.dLand[i][j]>0)rows.push(`Terra più vicina a circa ${kmLabel(g.dLand[i][j])}`);
+      const e=c?exposure(c,h):null;if(e)rows.push(EXP_TXT[e].charAt(0).toUpperCase()+EXP_TXT[e].slice(1));
+    }
+  }else rows.push('Fuori dal riquadro analizzato: imposta qui il punto target per avere i fondali.');
+  rows.push(`Attività ${h.score}/100 · vento ${n0(h.wind)} kn ${card(h.wdir)} · onda ${n1(h.wave)} m · acqua ${n1(h.sst)} °C${h.clar?', '+h.clar:''}`);
+  const b=bearing(d.lat,d.lon,la,lo),rt=g&&state.mode==='barca'&&ce?routeMin(g,d.lat,d.lon,la,lo,h.level==null?0:h.level):null;
+  rows.push(`Dal punto target: ${kmLabel(dist(d.lat,d.lon,la,lo))} verso ${card(b)} (${n0(b)}°)${rt?'; '+routeTxt(rt):''}`);
+  const el=document.createElement('div');el.className='pinfo';
+  el.innerHTML=`<b>${state.selDay===0?'Oggi':dayName(h.t)}, ore ${hh(h.t)}</b>${rows.map(r=>'<div>'+r+'</div>').join('')}<small>${coord(la,lo)}</small>
+    <div class="acts"><button class="btn pri" type="button" data-pa="go">Portami lì</button><button class="btn" type="button" data-pa="set">Metti qui il target</button><a class="btn" data-pa="fav" href="${gmaps(la,lo)}" target="_blank" rel="noopener">Salva</a><a class="btn" href="${gmaps(la,lo)}" target="_blank" rel="noopener">Google Maps</a></div>`;
+  el.querySelector('[data-pa="go"]').onclick=()=>{closeInfo();track(la,lo,'Punto scelto')};
+  el.querySelector('[data-pa="set"]').onclick=()=>{closeInfo();setPoint(la,lo,false)};
+  el.querySelector('[data-pa="fav"]').onclick=ev=>{const a=ev.currentTarget;if(a.dataset.done)return;a.dataset.done='1';favs.push({id:Date.now(),name:`${S.name}${dep!=null?' · '+n1(dep)+' m':''} · ${new Date().toLocaleDateString('it-IT',{day:'numeric',month:'short'})}`,lat:la,lon:lo,sp:state.sp,dep});store.set('cartapesca_favs',favs);drawMine();renderDiario();a.textContent='Salvato'};
+  return el;
+}
+function showInfo(la,lo){
+  if(!data||!data.H)return;
+  infoLL=[la,lo];
+  if(!infoMark)infoMark=L.circleMarker(infoLL,{radius:9,color:'#fff',weight:3,fillColor:'#e8590c',fillOpacity:1,interactive:false}).addTo(map);else infoMark.setLatLng(infoLL);
+  const b=$('#pbody');b.innerHTML='';b.appendChild(pointInfo(la,lo));$('#psheet').hidden=false;$('#psheet').scrollTop=0;
 }
 function drawStatic(){
   const d=data;isoLayer.clearLayers();structLayer.clearLayers();canalLayer.clearLayers();hazLayer.clearLayers();
@@ -1101,6 +1164,7 @@ function render(){
       `Esca: ${adv.lure[0]}${adv.colors[0]?' · '+PAL[adv.colors[0][0]].n:''}`].filter(Boolean).join('\n');
     copyText(t,'Riepilogo copiato: incollalo in chat.');
   };
+  if(infoLL){const b=$('#pbody');b.innerHTML='';b.appendChild(pointInfo(infoLL[0],infoLL[1]))}
   fsInfo();renderSpots(spots,S,sel);renderPiano(H,S);renderMare(H,d);renderEsca(S,H);renderDiario();
 }
 function renderSpots(spots,S,sel){
@@ -1119,7 +1183,7 @@ function renderSpots(spots,S,sel){
     <small>${kmLabel(s.dRef)} verso ${card(s.brg)} (${n0(s.brg)}°) · ${coord(s.la,s.lo)}</small></span>
     <span class="score">${s.live}<span>idoneità</span></span>
     <span class="acts"><button class="btn" type="button" data-a="show" data-k="${k}">Sulla mappa</button><button class="btn pri" type="button" data-a="go" data-k="${k}">Portami lì</button><a class="btn" data-a="fav" data-k="${k}" href="${gmaps(s.la,s.lo)}" target="_blank" rel="noopener">Salva</a><a class="btn" href="${gmaps(s.la,s.lo)}" target="_blank" rel="noopener">Google Maps</a></span></div>`).join('')+
-    `<p class="note">L'idoneità pesa profondità, pendenza del fondale, vicinanza a strutture e a costa, più l'esposizione al vento dell'ora scelta nel Piano.${d.structs.length||d.pending?'':' Strutture da OpenStreetMap non disponibili: gli spot usano solo il fondale.'}</p>`;
+    `<p class="note">Tocca un punto qualsiasi della mappa per avere fondale, navigabilità e probabilità in quel punto, nel giorno e nell'ora scelti. L'idoneità pesa profondità, pendenza del fondale, vicinanza a strutture e a costa, più l'esposizione al vento dell'ora scelta nel Piano.${d.structs.length||d.pending?'':' Strutture da OpenStreetMap non disponibili: gli spot usano solo il fondale.'}</p>`;
   p.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{
     const s=spots[+b.dataset.k],k=+b.dataset.k+1;
     if(b.dataset.a==='show'){map.setView([s.la,s.lo],Math.max(map.getZoom(),15));s.marker.openPopup();$('#map').scrollIntoView({behavior:'smooth',block:'start'})}
@@ -1262,7 +1326,7 @@ function renderDiario(){
   }
   p.innerHTML=`<div class="card"><h3>Registra una cattura</h3>
     <div class="form">
-      <label>Dove<select id="lg-pos"><option value="ref">Punto di riferimento</option>${d.spots.map((s,k)=>`<option value="${k}">Spot ${k+1} (${n1(s.dep)} m)</option>`).join('')}<option value="gps">La mia posizione GPS</option></select></label>
+      <label>Dove<select id="lg-pos"><option value="ref">Punto target</option>${d.spots.map((s,k)=>`<option value="${k}">Spot ${k+1} (${n1(s.dep)} m)</option>`).join('')}<option value="gps">La mia posizione GPS</option></select></label>
       <label>Esca e colore<input id="lg-lure" type="text" value="${esc(adv.lure[0]+(adv.colors[0]?' · '+PAL[adv.colors[0][0]].n:''))}"></label>
       <label>Peso in kg (facoltativo)<input id="lg-kg" type="text" inputmode="decimal"></label>
       <label>Note<input id="lg-note" type="text"></label>
@@ -1321,7 +1385,10 @@ async function analyze(){
   const st=await pStruct;                                   // canali e strutture arrivano dopo, senza bloccare la mappa
   if(run!==state.run)return;
   data.pending=false;
-  if(st){data.structs=filterStructs(st.pts,grid);data.lines=st.lines;data.areas=st.areas;drawStatic()}
+  if(st){
+    if(grid&&applyCoast(grid,st.coast)){deriveGrid(grid);delete grid.sdep}
+    data.structs=filterStructs(st.pts,grid);data.lines=st.lines;data.areas=st.areas;drawStatic();
+  }
   if(grid&&met)store.set('cartapesca_last',slim(data));
   render();
 }
@@ -1331,6 +1398,12 @@ function setPoint(lat,lon,fly){
   if(fly)map.setView([lat,lon],13);
   if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
   clearTimeout(deb);deb=setTimeout(analyze,450);
+}
+function applyLayers(){
+  for(const k in LAY){const on=state.lay[k]!==false;LAY[k].forEach(l=>{if(on){if(!map.hasLayer(l))l.addTo(map)}else map.removeLayer(l)});$('#ly-'+k).checked=on}
+  if(!BASE[state.base])state.base='Carta';
+  for(const n in BASE){if(n===state.base){if(!map.hasLayer(BASE[n]))BASE[n].addTo(map)}else map.removeLayer(BASE[n])}
+  $$('#basesel button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.b===state.base));
 }
 function applyOpacity(){
   const o=state.op;
@@ -1357,6 +1430,7 @@ function syncControls(){
 function init(){
   if(!window.L||!window.SunCalc){$('#setpt').style.display='none';$('#sum').innerHTML='<h2>Qui internet è bloccato</h2><p>Se stai guardando l\'anteprima dentro l\'app di Claude, la pagina non può scaricare mappe e dati. Aprila dal suo indirizzo web in Safari (per esempio su GitHub Pages). Se sei già nel browser, controlla la connessione e ricarica.</p>';return}
   if(!$('#p-'+state.tab))state.tab='spot';
+  try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches)document.documentElement.classList.add('standalone')}catch(e){}
   const fit=()=>document.documentElement.style.setProperty('--hh',$('#hd').offsetHeight+'px');
   addEventListener('resize',fit);setTimeout(fit,0);
   const ENVS=['laguna','costa','largo'];
@@ -1370,8 +1444,10 @@ function init(){
   $('#radius').onchange=e=>{state.R=+e.target.value;analyze()};
   $('#night').onclick=()=>{state.night=!state.night;save();syncControls()};
   $('#trackstop').onclick=stopTrack;
+  $('#pclose').onclick=closeInfo;
   $('#srchbtn').onclick=()=>{const r=$('#srchrow');r.hidden=!r.hidden;$('#srchbtn').setAttribute('aria-expanded',!r.hidden);fit();if(!r.hidden)$('#place').focus();setTimeout(()=>map.invalidateSize(),60)};
   if(!state.op||state.op.heat==null)state.op={heat:100,nav:100,iso:100,osm:100,emod:55};
+  state.lay=Object.assign({heat:true,nav:true,iso:true,osm:true,emod:false,spot:true,str:true,fav:true,log:true,sea:true},state.lay||{});
   const lg=on=>{$('#legend').classList.toggle('closed',!on);$('#lgbtn').setAttribute('aria-expanded',on)};
   lg(state.legend===true);
   $('#lgbtn').onclick=()=>{state.legend=$('#legend').classList.contains('closed');lg(state.legend);save()};
@@ -1383,11 +1459,9 @@ function init(){
     else{prevOp=Object.assign({},state.op);state.op={heat:0,nav:0,iso:0,osm:0,emod:0};$('#op-hide').textContent='Mostra di nuovo'}
     applyOpacity();save();
   };
-  $('#op-sat').onclick=()=>{
-    const sat=map.hasLayer(BASE['Satellite']);
-    Object.values(BASE).forEach(l=>map.removeLayer(l));BASE[sat?'Carta':'Satellite'].addTo(map);
-    $('#op-sat').textContent=sat?'Sfondo satellite':'Sfondo carta';
-  };
+  $('#op-close').onclick=()=>$('#opbtn').onclick();
+  ['heat','nav','iso','osm','emod','spot','str','fav','log','sea'].forEach(k=>$('#ly-'+k).onchange=e=>{state.lay[k]=e.target.checked;applyLayers();save()});
+  $$('#basesel button').forEach(b=>b.onclick=()=>{state.base=b.dataset.b;applyLayers();save()});
   $('#fs').onclick=()=>{
     const on=document.body.classList.toggle('full');
     $('#fs').setAttribute('aria-pressed',on);$('#fs').textContent=on?'Esci':'Schermo intero';
@@ -1411,7 +1485,7 @@ function init(){
     navigator.geolocation.getCurrentPosition(p=>setPoint(p.coords.latitude,p.coords.longitude,true),
       e=>setStatus(geoMsg(e),true),{enableHighAccuracy:true,timeout:20000,maximumAge:0});
   };
-  initMap();applyOpacity();drawMine();syncControls();analyze();
+  initMap();applyLayers();applyOpacity();drawMine();syncControls();analyze();
 }
 init();
 </script>
