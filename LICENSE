@@ -1,0 +1,57 @@
+Carta di pesca
+Copyright (c) 2026 GiulioBj. Tutti i diritti riservati. / All rights reserved.
+
+ITALIANO
+
+Questo software (codice sorgente, testi, grafica e struttura dell'applicazione
+"Carta di pesca") è di proprietà esclusiva dell'autore.
+
+Non è concessa alcuna licenza d'uso. Senza un'autorizzazione scritta
+dell'autore è vietato, in tutto o in parte:
+
+  - copiare, riprodurre o ridistribuire il codice;
+  - modificarlo o crearne opere derivate;
+  - pubblicarlo, ospitarlo o metterlo a disposizione di terzi;
+  - usarlo per scopi commerciali o all'interno di altri prodotti o servizi.
+
+È consentita la sola consultazione dell'applicazione pubblicata dall'autore,
+tramite il proprio browser, per uso personale.
+
+Il software è fornito "così com'è", senza garanzie di alcun tipo. Le
+informazioni mostrate (fondali, isobate, maree, meteo, zone di pesca) sono
+stime e non sostituiscono carte nautiche ufficiali, strumenti di bordo e
+bollettini: non vanno usate per la navigazione o per la sicurezza in mare.
+L'autore non risponde di danni derivanti dall'uso dell'applicazione.
+
+ENGLISH
+
+This software (source code, text, graphics and structure of the "Carta di
+pesca" application) is the exclusive property of the author.
+
+No licence is granted. Without the author's prior written permission you may
+not, in whole or in part, copy, reproduce, redistribute, modify, create
+derivative works from, publish, host, make available to third parties, or use
+this software commercially or inside other products or services.
+
+You may only view the application as published by the author, in your own
+browser, for personal use.
+
+The software is provided "as is", without warranty of any kind. The
+information shown is an estimate and must not be used for navigation or
+safety at sea. The author is not liable for any damage arising from its use.
+
+MATERIALE DI TERZI / THIRD-PARTY MATERIAL
+
+Quanto sopra non si applica al materiale di terzi, che resta dei rispettivi
+titolari e soggetto alle loro licenze. / The above does not apply to
+third-party material, which remains subject to its own licences:
+
+  - laguna/osm.json: estratto di OpenStreetMap, (c) OpenStreetMap contributors,
+    Open Database License (ODbL) 1.0 - https://www.openstreetmap.org/copyright
+  - laguna/0, laguna/1, laguna/2: batimetria derivata da EMODnet Bathymetry
+    (HRSM Venice Lagoon, Deltares, 2022; multibeam dei canali, CNR-ISMAR, 2013)
+    - https://emodnet.ec.europa.eu/en/bathymetry
+  - Leaflet (BSD 2-Clause), SunCalc (BSD 2-Clause), caratteri Barlow
+    (SIL Open Font License), caricati da servizi esterni.
+  - Dati richiesti a servizi esterni durante l'uso: EMODnet Bathymetry,
+    Open-Meteo, MET Norway, OpenStreetMap, OpenSeaMap, Esri.
