@@ -217,7 +217,7 @@ footer a{color:var(--sea)}
 </head>
 <body>
 <header id="hd">
-  <div class="top"><h1>Carta di pesca <small style="font:400 11px var(--body);opacity:.7;text-transform:none">v15</small></h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
+  <div class="top"><h1>Carta di pesca <small style="font:400 11px var(--body);opacity:.7;text-transform:none">v16</small></h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
   <div class="ctl"><select id="spsel" aria-label="Specie da cercare"></select></div>
   <div class="ctl">
     <div class="seg" role="group" aria-label="Da dove peschi">
@@ -636,13 +636,12 @@ function readTiff(buf){
   else throw new Error('tiff');
   return {w,h,v,x0,y0,dx,dy};
 }
-let N=51;
 // La griglia sta su un reticolo fisso, agganciato alle celle EMODnet (1/16 di primo): spostando il target o cambiando raggio
-// i punti misurati restano gli stessi, quindi fondali e isobate non cambiano. Solo a 20 km si prende un punto ogni due.
+// i punti misurati restano gli stessi, quindi fondali e isobate non cambiano. Oltre i 10 km (mappa vista da lontano) si prende un punto ogni 2, 4 o 8.
 const GU=1/960;
-async function loadGrid(lat,lon,R,run){
+async function loadGrid(lat,lon,R,alive,quiet){
   const c=Math.cos(lat*RAD),mult=c>.8?1:c>.57?1.5:c>.4?2:3,off=mult===1.5?.25:.5;   // passo in longitudine vicino a quello in latitudine, sempre dentro la cella
-  const st=R<=10000?1:2,cy=GU*MLAT*st,cx=GU*mult*mlon(lat)*st;
+  const st=R<=10000?1:R<=20000?2:R<=40000?4:8,cy=GU*MLAT*st,cx=GU*mult*mlon(lat)*st;
   const h=Math.max(Math.ceil(R/cy),Math.ceil(R/cx)),n=2*h+1;
   const k0=Math.round((lat/GU-.5)/st)*st,m0=Math.round((lon/GU-off)/mult/st)*st;
   const lats=Array.from({length:n},(_,i)=>(k0+(i-h)*st+.5)*GU);
@@ -650,11 +649,11 @@ async function loadGrid(lat,lon,R,run){
   const z=lats.map(()=>new Array(n).fill(NaN));
   let ok=false;
   // Strada principale: la griglia EMODnet originale in un'unica richiesta, così ogni punto legge sempre la stessa cella.
-  for(let t=0;t<3&&!ok&&run===state.run;t++){
+  for(let t=0;t<3&&!ok&&alive();t++){
     try{
       if(t)await new Promise(r=>setTimeout(r,800*t));
-      setStatus('Carico i fondali…');
-      const r=await fetch(`https://ows.emodnet-bathymetry.eu/wcs?service=WCS&version=2.0.1&request=GetCoverage&coverageId=emodnet__mean&format=image/tiff&subset=Long(${(lons[0]-2*GU).toFixed(7)},${(lons[n-1]+2*GU).toFixed(7)})&subset=Lat(${(lats[0]-2*GU).toFixed(7)},${(lats[n-1]+2*GU).toFixed(7)})`);
+      if(!quiet)setStatus('Carico i fondali…');
+      const r=await fetch(`https://ows.emodnet-bathymetry.eu/wcs?service=WCS&version=2.0.1&request=GetCoverage&coverageId=emodnet__mean&format=image/tiff${st>=4?"&scalefactor="+2/st:""}&subset=Long(${(lons[0]-2*GU).toFixed(7)},${(lons[n-1]+2*GU).toFixed(7)})&subset=Lat(${(lats[0]-2*GU).toFixed(7)},${(lats[n-1]+2*GU).toFixed(7)})`);
       if(!r.ok)continue;
       const T=readTiff(await r.arrayBuffer());let any=false;
       for(let i=0;i<n;i++)for(let j=0;j<n;j++){
@@ -670,7 +669,7 @@ async function loadGrid(lat,lon,R,run){
   let next=0,done=0;const okRow=new Array(n).fill(false);
   async function row(i){
     const g=`LINESTRING(${lons[0].toFixed(7)} ${lats[i].toFixed(7)},${lonEnd.toFixed(7)} ${lats[i].toFixed(7)})`;
-    for(let t=0;t<3&&run===state.run;t++){
+    for(let t=0;t<3&&alive();t++){
       try{
         const r=await fetch('https://rest.emodnet-bathymetry.eu/depth_profile?geom='+encodeURIComponent(g));
         const a=r.ok?await r.json():null;
@@ -686,7 +685,7 @@ async function loadGrid(lat,lon,R,run){
   async function worker(){
     while(next<n){
       const i=next++;await row(i);done++;
-      if(run===state.run)setStatus(`Carico i fondali: ${done} di ${n}…`);
+      if(alive()&&!quiet)setStatus(`Carico i fondali: ${done} di ${n}…`);
     }
   }
   await Promise.all(Array.from({length:5},worker));
@@ -711,10 +710,10 @@ async function loadGrid(lat,lon,R,run){
       if(wet)for(let i=0;i<n;i++)for(let j=0;j<n;j++)if(px[((n-1-i)*n+j)*4+3]<=127&&z[i][j]<.5)z[i][j]=1;   // fuori dall'acqua: terra
     }
   }catch(e){}
-  return {lats,lons,z,cell:(cx+cy)/2,cx,cy};                // deriveGrid si chiama quando la griglia diventa quella mostrata
+  return {lats,lons,z,cell:(cx+cy)/2,cx,cy,st};                // deriveGrid si chiama quando la griglia diventa quella mostrata
 }
 function deriveGrid(g){
-  N=g.lats.length;ZQ=Math.max(2,Math.min(16,Math.round(320/N)));
+  const N=g.lats.length;
   const {z,cell}=g,cx=g.cx||cell,cy=g.cy||cell;
   const dep=z.map(r=>r.map(v=>-v));                       // profondità positiva verso il basso
   const water=dep.map(r=>r.map(v=>v>0.2));
@@ -835,6 +834,7 @@ async function loadStructs(lat,lon,R){
 }
 // In OpenStreetMap la linea di costa ha sempre la terra a sinistra: per ogni cella guardo da che lato sta del tratto più vicino.
 function applyCoast(g,coast){
+  const N=g.lats.length;
   const kx=mlon(g.lats[N>>1]),ky=MLAT,segs=[];
   for(const w of coast||[])for(let k=0;k<w.length-1;k++)segs.push([w[k][1]*kx,w[k][0]*ky,w[k+1][1]*kx,w[k+1][0]*ky]);
   if(segs.length<2||segs.length>80000)return 0;
@@ -858,6 +858,7 @@ function applyCoast(g,coast){
 // Tengo il dato dove c'è un canale segnato e riporto il resto a un fondale da bassofondo, marcandolo come stima.
 const SHOAL=1.7,SHOULDER=2.3;
 function applyLagoon(g,st){
+  const N=g.lats.length;
   g.est=null;
   if(!st||!st.lagoon)return 0;
   const kx=mlon(g.lats[N>>1]),ky=MLAT;
@@ -898,7 +899,7 @@ function applyLagoon(g,st){
 }
 function filterStructs(st,g){
   if(!g)return st.filter(s=>!s.river);
-  const {lats,lons}=g,cellOf=s=>[Math.round((s.lat-lats[0])/(lats[N-1]-lats[0])*(N-1)),Math.round((s.lon-lons[0])/(lons[N-1]-lons[0])*(N-1))];
+  const N=g.lats.length,{lats,lons}=g,cellOf=s=>[Math.round((s.lat-lats[0])/(lats[N-1]-lats[0])*(N-1)),Math.round((s.lon-lons[0])/(lons[N-1]-lons[0])*(N-1))];
   const nearWater=(i,j,r)=>{for(let a=i-r;a<=i+r;a++)for(let b=j-r;b<=j+r;b++)if(a>=0&&b>=0&&a<N&&b<N&&g.water[a][b])return true;return false};
   const seen=new Set();
   return st.filter(s=>{
@@ -1001,23 +1002,30 @@ function drift(h){
 }
 
 /* ---------- Spot ---------- */
-function findSpots(d,sp,mode){
-  const g=d.grid,S=SPECIES[sp];d.heat=[];d.heatIdx={};d.heatMax=0;if(!g)return [];
-  const st=d.structs.filter(s=>S.structs.includes(s.type)),cand=[];
+// Idoneità di ogni cella d'acqua per una specie: serve sia agli spot nel raggio sia alle zone probabili su tutta la mappa visibile.
+function scoreCells(g,S,structs,mode){
+  const N=g.lats.length,st=structs.filter(s=>S.structs.includes(s.type)),cand=[];
+  const kx=mlon(g.lats[N>>1]),ky=MLAT,sx=st.map(s=>s.lon*kx),sy=st.map(s=>s.lat*ky);
   for(let i=0;i<N;i++)for(let j=0;j<N;j++){
     if(!g.water[i][j])continue;
     const dep=g.dep[i][j],la=g.lats[i],lo=g.lons[j],dl=g.dLand[i][j];
     if(mode==='riva'&&!(dl<=g.cell*1.6))continue;
     const sD=trap(dep,S.depth);if(sD<=0)continue;
     const sl=g.slope[i][j],sS=Math.min(1,sl/S.slopeRef);
-    let ds=Infinity,near=null;for(const s of st){const x=dist(la,lo,s.lat,s.lon);if(x<ds){ds=x;near=s}}
-    const sT=near?Math.exp(-ds/300):0,sH=isFinite(dl)?Math.exp(-dl/400):0;
+    let d2=Infinity,near=null;const px=lo*kx,py=la*ky;
+    for(let k=0;k<st.length;k++){const a=sx[k]-px,b=sy[k]-py,q=a*a+b*b;if(q<d2){d2=q;near=st[k]}}
+    const ds=Math.sqrt(d2),sT=near?Math.exp(-ds/300):0,sH=isFinite(dl)?Math.exp(-dl/400):0;
     const wT=st.length?S.w.struct:0,wsum=S.w.slope+wT+S.w.shore||1;
     const score=sD*(.45+.55*(S.w.slope*sS+wT*sT+S.w.shore*sH)/wsum);
     const p=g.nl[i][j],brgSea=p&&dl<=1500?bearing(g.lats[p[0]],g.lons[p[1]],la,lo):null;
     cand.push({i,j,la,lo,dep,sl,ds,near,dl,score,sD,brgSea});
   }
-  d.heat=cand.slice();d.heatIdx={};d.heatMax=0;for(const c of cand){d.heatIdx[c.i*N+c.j]=c;if(c.score>d.heatMax)d.heatMax=c.score}
+  return cand;
+}
+function findSpots(d,sp,mode){
+  const g=d.grid,S=SPECIES[sp];d.heat=[];d.heatIdx={};d.heatMax=0;if(!g)return [];
+  const cand=scoreCells(g,S,d.structs,mode);
+  d.heat=cand.slice();for(const c of cand){d.heatIdx[c.i*1000+c.j]=c;if(c.score>d.heatMax)d.heatMax=c.score}
   cand.sort((a,b)=>b.score-a.score);
   const minSep=Math.max(300,d.R/5),pick=[];
   for(const c of cand){if(pick.length>=6)break;if(pick.every(p=>dist(p.la,p.lo,c.la,c.lo)>=minSep))pick.push(c)}
@@ -1030,6 +1038,7 @@ function findSpots(d,sp,mode){
   });
 }
 function cellAt(g,la,lo){
+  const N=g.lats.length;
   const i=Math.round((la-g.lats[0])/(g.lats[N-1]-g.lats[0])*(N-1)),j=Math.round((lo-g.lons[0])/(g.lons[N-1]-g.lons[0])*(N-1));
   return i<0||j<0||i>=N||j>=N?null:[i,j];
 }
@@ -1052,6 +1061,7 @@ function rankLive(spots,S,h){
   return spots.map(s=>{const e=exposure(s,h),bonus=!S.exp||!e||e==='lato'?0:e===S.exp?8:-6;return Object.assign(s,{exp:e,live:Math.max(0,Math.min(100,s.pts+bonus)),bonus})}).sort((a,b)=>b.live-a.live);
 }
 function smoothDep(g){
+  const N=g.lats.length;
   return g.dep.map((r,i)=>r.map((v,j)=>{if(isNaN(v)||!g.water[i][j])return v;let s=v*2,n=2;for(const [a,b] of [[1,0],[-1,0],[0,1],[0,-1]]){const y=i+a,x=j+b;if(y>=0&&x>=0&&y<N&&x<N&&!isNaN(g.dep[y][x])&&g.water[y][x]){s+=g.dep[y][x];n++}}return s/n}));
 }
 // Isobate di più livelli in una sola passata su una matrice (NaN = nessun dato). latOf e lonOf accettano indici frazionari.
@@ -1078,7 +1088,7 @@ function contours(v,w,h,levels,latOf,lonOf){
 }
 // Isobate dalla griglia EMODnet: la griglia viene infittita di 4 volte per avere curve morbide; dove c'è il rilievo della laguna si lascia il posto a quello.
 function gridIso(g,levels,skipHr){
-  const sd=g.sdep||(g.sdep=smoothDep(g)),U=4,w=(N-1)*U+1,v=new Float32Array(w*w);
+  const N=g.lats.length,sd=g.sdep||(g.sdep=smoothDep(g)),U=4,w=(N-1)*U+1,v=new Float32Array(w*w);
   for(let y=0;y<w;y++){
     const i0=Math.min(N-2,Math.floor(y/U)),fi=y/U-i0;
     for(let x=0;x<w;x++){
@@ -1091,8 +1101,8 @@ function gridIso(g,levels,skipHr){
   return contours(v,w,w,levels,y=>lats[0]+y*dl,x=>lons[0]+x*dn);
 }
 // Isobate dal rilievo della laguna, alla sua risoluzione piena: non dipendono dal raggio scelto.
-function hrIso(hr,levels){
-  const {w,h,v}=hr;
+function hrIso(hr,levels,step){
+  const {w,h,v}=hr;step=step||1;
   if(!hr.s){                                               // leggera lisciatura 3x3 per togliere il rumore del dato da satellite
     const s=hr.s=new Float32Array(w*h);
     for(let y=0;y<h;y++)for(let x=0;x<w;x++){
@@ -1102,7 +1112,10 @@ function hrIso(hr,levels){
       s[y*w+x]=sum/n;
     }
   }
-  return contours(hr.s,w,h,levels,y=>HR.y1-(hr.Y0+y+.5)*HR.d,x=>HR.x0+(hr.X0+x+.5)*HR.d);
+  if(step===1)return contours(hr.s,w,h,levels,y=>HR.y1-(hr.Y0+y+.5)*HR.d,x=>HR.x0+(hr.X0+x+.5)*HR.d);
+  const w2=Math.floor(w/step),h2=Math.floor(h/step),t=new Float32Array(w2*h2);      // mappa vista da lontano: un punto ogni "step"
+  for(let y=0;y<h2;y++)for(let x=0;x<w2;x++)t[y*w2+x]=hr.s[y*step*w+x*step];
+  return contours(t,w2,h2,levels,y=>HR.y1-(hr.Y0+y*step+.5)*HR.d,x=>HR.x0+(hr.X0+x*step+.5)*HR.d);
 }
 
 /* ---------- Scelta di esca e colore ---------- */
@@ -1263,20 +1276,72 @@ function initMap(){
   areaRect=L.rectangle([[0,0],[0,0]],{color:'#0e2a3b',weight:1.5,dashArray:'6 5',fill:false,interactive:false}).addTo(map);
   refMarker.on('dragend',()=>{const p=refMarker.getLatLng();setPoint(p.lat,p.lng,false)});
   map.on('click',e=>showInfo(e.latlng.lat,e.latlng.lng));
+  map.on('moveend',scheduleView);
 
+}
+/* ---------- Area visibile: isobate, zone probabili e bassi fondali seguono la mappa; il raggio serve solo agli spot ---------- */
+let view=null,viewSeq=0,viewTimer=null,osmCache=[],osmBusy=false,lastIsoKey='';
+const mapGrid=()=>view&&view.grid?view.grid:data&&data.grid;
+const mapHr=()=>view&&view.grid?view.hr:data&&data.hr;
+const isoMode=()=>{const z=map.getZoom(),u=ISO_LEVELS[state.isoDens]?state.isoDens:2;return {dens:z>=13?u:z>=12?Math.min(u,2):1,step:z>=13?1:z>=11?2:4}};   // da lontano meno linee
+const osmFor=(lat,lon,R)=>{for(const c of osmCache)if(Math.abs(lat-c.lat)*MLAT+R<=c.R+60&&Math.abs(lon-c.lon)*mlon(lat)+R<=c.R+60)return c.st;return null};
+function scheduleView(){clearTimeout(viewTimer);viewTimer=setTimeout(loadView,600)}
+function scoreView(){
+  if(!view||!view.grid||!data)return;
+  const src=view.st?view.structs:data.structs||[],key=state.sp+'|'+state.mode+'|'+(view.st?'v':'t')+src.length;
+  if(view.heatKey===key)return;
+  view.heat=scoreCells(view.grid,SPECIES[state.sp],src,state.mode);view.heatIdx={};for(const c of view.heat)view.heatIdx[c.i*1000+c.j]=c;view.heatKey=key;
+}
+function redrawMap(){
+  if(!data)return;
+  scoreView();drawStatic();
+  if(data.H){drawHeat();data.nav=drawNav(data.H[state.selHour]||data.H[0]);if(infoLL){const b=$('#pbody');b.innerHTML='';b.appendChild(pointInfo(infoLL[0],infoLL[1]))}}
+}
+function viewAdoptOsm(){                                    // quando arrivano canali e strutture per l'area visibile, la griglia della mappa li usa
+  if(!view||!view.grid||view.st)return false;
+  const st=osmFor(view.req.lat,view.req.lon,view.req.R);if(!st)return false;
+  const a=applyCoast(view.grid,st.coast),b=applyLagoon(view.grid,st);if(a||b)deriveGrid(view.grid);
+  view.st=st;view.structs=filterStructs(st.pts,view.grid);view.heatKey=null;
+  return true;
+}
+async function viewOsm(){
+  if(osmBusy||!view||view.st||view.req.R>12000)return;
+  const req=view.req,tR=data?Math.max(data.R,6000):0;
+  if(data&&data.pending&&Math.abs(req.lat-data.lat)*MLAT+req.R<=tR+60&&Math.abs(req.lon-data.lon)*mlon(req.lat)+req.R<=tR+60)return;   // sta già arrivando con la richiesta del target
+  osmBusy=true;
+  const st=await loadStructs(req.lat,req.lon,req.R).catch(()=>null);osmBusy=false;
+  if(!st)return;
+  osmCache.push({lat:req.lat,lon:req.lon,R:req.R,st});if(osmCache.length>6)osmCache.shift();
+  if(viewAdoptOsm())redrawMap();else viewOsm();            // nel frattempo la mappa si è spostata: richiedo la zona nuova
+}
+async function loadView(){
+  if(!data||!data.grid||!map||data.cached)return;
+  const b=map.getBounds(),c=b.getCenter(),half=Math.max(dist(b.getSouth(),c.lng,b.getNorth(),c.lng),dist(c.lat,b.getWest(),c.lat,b.getEast()))/2;
+  const req={lat:c.lat,lon:c.lng,R:Math.min(40000,half*1.3)},want=req.R<=10000?1:req.R<=20000?2:req.R<=40000?4:8;
+  const covers=g=>g&&g.lats[0]<=b.getSouth()&&g.lats[g.lats.length-1]>=b.getNorth()&&g.lons[0]<=b.getWest()&&g.lons[g.lons.length-1]>=b.getEast();
+  const same=()=>{if(isoMode().dens+'_'+isoMode().step!==lastIsoKey)drawStatic()};
+  if(covers(data.grid)&&data.grid.st<=want){if(view){view=null;redrawMap()}else same();return}       // basta la griglia del raggio
+  if(view&&view.grid.st<=want&&(covers(view.grid)||(half*1.3>40000&&view.req.R>=40000&&dist(view.req.lat,view.req.lon,c.lat,c.lng)<15000))){same();return}
+  if(map.getZoom()<9){same();return}
+  const seq=++viewSeq;
+  const [grid,hr]=await Promise.all([loadGrid(req.lat,req.lon,req.R,()=>seq===viewSeq,true).catch(()=>null),loadHR(req.lat,req.lon,req.R).catch(()=>null)]);
+  if(seq!==viewSeq||!grid||!data)return;
+  applyHR(grid,hr);deriveGrid(grid);
+  view={grid,hr:grid.hr?hr:null,req,st:null,structs:null,heat:null,heatIdx:{},heatKey:null};
+  viewAdoptOsm();redrawMap();viewOsm();
 }
 /* ---------- Informazioni sul punto toccato ---------- */
 let infoMark=null,infoLL=null;
 function closeInfo(){infoLL=null;$('#psheet').hidden=true;if(infoMark){infoMark.remove();infoMark=null}}
 function pointInfo(la,lo){
-  const d=data,S=SPECIES[state.sp],h=d.H[state.selHour]||d.H[0],g=d.grid,ce=g?cellAt(g,la,lo):null,rows=[];
+  const d=data,S=SPECIES[state.sp],h=d.H[state.selHour]||d.H[0],vw=view&&view.grid&&cellAt(view.grid,la,lo)?view:null,g=vw?vw.grid:d.grid,ce=g?cellAt(g,la,lo):null,rows=[];
   let dep=null;
   if(ce){
-    const [i,j]=ce,fine=hrAt(d.hr,la,lo),isHr=fine===fine,v=isHr?fine:g.dep[i][j];
+    const [i,j]=ce,fine=hrAt(vw?vw.hr:d.hr,la,lo),isHr=fine===fine,v=isHr?fine:g.dep[i][j];
     if(isNaN(v))rows.push('Fondale: dato non disponibile in questo punto.');
     else if(isHr?v<=.2:!g.water[i][j])rows.push('Terra o fondale emerso.');
     else{
-      dep=v;const lvl=h.level==null?0:h.level,eff=Math.max(0,v+lvl),c=d.heatIdx[i*N+j],rel=c&&d.heatMax?c.score/d.heatMax:0,es=!isHr&&g.est&&g.est[i][j];
+      dep=v;const lvl=h.level==null?0:h.level,eff=Math.max(0,v+lvl),c=(vw&&vw.heatIdx?vw:d).heatIdx[i*1000+j],rel=c&&d.heatMax?c.score/d.heatMax:0,es=!isHr&&g.est&&g.est[i][j];
       rows.push(`Fondale ${es?'stimato circa ':''}<b>${n1(v)} m</b>${h.level!=null?`; con la marea di quell'ora circa <b>${n1(eff)} m</b>`:''}`);
       if(es)rows.push('<small>Bassofondo di laguna fuori dai canali: qui non ci sono rilievi, il valore è una stima prudente.</small>');
       if(isHr)rows.push('<small>Dal rilievo ad alta risoluzione della laguna (celle di circa 25 m).</small>');
@@ -1287,7 +1352,7 @@ function pointInfo(la,lo){
       if(isFinite(g.dLand[i][j])&&g.dLand[i][j]>0)rows.push(`Terra più vicina a circa ${kmLabel(g.dLand[i][j])}`);
       const e=c?exposure(c,h):null;if(e)rows.push(EXP_TXT[e].charAt(0).toUpperCase()+EXP_TXT[e].slice(1));
     }
-  }else rows.push('Fuori dal riquadro analizzato: imposta qui il punto target per avere i fondali.');
+  }else rows.push('Fuori dalla zona caricata: avvicina la mappa o imposta qui il punto target per avere i fondali.');
   rows.push(`Attività ${h.score}/100 · vento ${n0(h.wind)} kn ${card(h.wdir)} · onda ${n1(h.wave)} m · acqua ${n1(h.sst,' °C')}${h.clar?', '+h.clar:''}`);
   const b=bearing(d.lat,d.lon,la,lo),rt=g&&state.mode==='barca'&&ce?routeMin(g,d.lat,d.lon,la,lo,h.level==null?0:h.level):null;
   rows.push(`Dal punto target: ${kmLabel(dist(d.lat,d.lon,la,lo))} verso ${card(b)} (${n0(b)}°)${rt?'; '+routeTxt(rt):''}`);
@@ -1307,12 +1372,13 @@ function showInfo(la,lo){
 }
 function drawStatic(){
   const d=data;isoLayer.clearLayers();structLayer.clearLayers();canalLayer.clearLayers();hazLayer.clearLayers();
-  for(const a of d.areas||[])L.polygon(a.ll,{pane:'osm',color:'#8a4b12',weight:1,fillColor:'#b5651d',fillOpacity:.28}).bindTooltip(a.kind+(a.name?' · '+a.name:'')).addTo(hazLayer);
-  if((d.lines||[]).length)L.polyline(d.lines,{pane:'osm',color:'#1a73e8',weight:2.5,opacity:.75,interactive:false}).addTo(canalLayer);
-  if(d.grid){
-    const dens=ISO_LEVELS[state.isoDens]?state.isoDens:2,levels=ISO_LEVELS[dens],hr=d.hr;
-    const sets=[gridIso(d.grid,levels,!!hr)];
-    if(hr)sets.push(hr.iso[dens]||(hr.iso[dens]=hrIso(hr,levels)));
+  const o=view&&view.st?view.st:null,areas=o?o.areas:d.areas||[],lines=o?o.lines:d.lines||[],structs=o?view.structs:d.structs,g=mapGrid();
+  for(const a of areas)L.polygon(a.ll,{pane:'osm',color:'#8a4b12',weight:1,fillColor:'#b5651d',fillOpacity:.28}).bindTooltip(a.kind+(a.name?' · '+a.name:'')).addTo(hazLayer);
+  if(lines.length)L.polyline(lines,{pane:'osm',color:'#1a73e8',weight:2.5,opacity:.75,interactive:false}).addTo(canalLayer);
+  if(g){
+    const {dens,step}=isoMode(),levels=ISO_LEVELS[dens],hr=mapHr();lastIsoKey=dens+'_'+step;
+    const sets=[gridIso(g,levels,!!hr)];
+    if(hr)sets.push(hr.iso[lastIsoKey]||(hr.iso[lastIsoKey]=hrIso(hr,levels,step)));
     levels.forEach((lv,k)=>{
       const main=ISO_MAIN.includes(lv),wt=main?2:dens===3?1:1.3,lab=String(lv).replace('.',',')+' m';
       for(const set of sets){
@@ -1324,10 +1390,10 @@ function drawStatic(){
       }
     });
   }
-  for(const s of d.structs)if(s.type!=='canale')L.circleMarker([s.lat,s.lon],{radius:4,color:'#0e2a3b',weight:1.5,fillColor:'#fff',fillOpacity:1}).bindTooltip(STRUCT_LABEL[s.type]+(s.name?' · '+s.name:'')).addTo(structLayer);
+  for(const s of structs)if(s.type!=='canale')L.circleMarker([s.lat,s.lon],{radius:4,color:'#0e2a3b',weight:1.5,fillColor:'#fff',fillOpacity:1}).bindTooltip(STRUCT_LABEL[s.type]+(s.name?' · '+s.name:'')).addTo(structLayer);
 }
 function upsample(vals,Z){
-  const M=N*Z,out=new Float32Array(M*M),cl=(v,a,b)=>v<a?a:v>b?b:v;
+  const N=vals.length,M=N*Z,out=new Float32Array(M*M),cl=(v,a,b)=>v<a?a:v>b?b:v;
   for(let Y=0;Y<M;Y++){
     const gi=(N-1)-((Y+.5)/Z-.5),i0=cl(Math.floor(gi),0,N-1),i1=Math.min(N-1,i0+1),fi=cl(gi-i0,0,1);
     for(let X=0;X<M;X++){
@@ -1337,15 +1403,15 @@ function upsample(vals,Z){
   }
   return out;
 }
-let ZQ=6;
+const zqOf=n=>Math.max(2,Math.min(16,Math.round(320/n)));
 function waterMask(g){
   if(g._wm)return g._wm;
-  const m=upsample(g.water.map(r=>r.map(v=>v?1:0)),ZQ);
+  const m=upsample(g.water.map(r=>r.map(v=>v?1:0)),zqOf(g.lats.length));
   for(let k=0;k<m.length;k++)m[k]=Math.max(0,Math.min(1,(m[k]-.5)*2.2));   // bordo morbido che si ferma alla riva
   return g._wm=m;
 }
 function overlayImage(layer,pane,g,paint){
-  const M=N*ZQ,cv=document.createElement('canvas');cv.width=cv.height=M;
+  const N=g.lats.length,M=N*zqOf(N),cv=document.createElement('canvas');cv.width=cv.height=M;
   let ctx=null;try{ctx=cv.getContext('2d')}catch(e){}
   if(!ctx)return;
   const im=ctx.createImageData(M,M);paint(im.data);ctx.putImageData(im,0,0);
@@ -1353,16 +1419,21 @@ function overlayImage(layer,pane,g,paint){
   L.imageOverlay(cv.toDataURL(),[[g.lats[0]-a,g.lons[0]-b],[g.lats[N-1]+a,g.lons[N-1]+b]],{pane,interactive:false}).addTo(layer);
 }
 function drawNav(h){
-  navLayer.clearLayers();const g=data.grid;
-  if(!g||state.mode!=='barca')return null;
-  const lvl=h.level==null?0:h.level,S=g.water.map(r=>r.map(()=>0));let red=0,amb=0,tot=0;
-  for(let i=0;i<N;i++)for(let j=0;j<N;j++){
-    if(!g.open[i][j])continue;tot++;
-    const e=g.dep[i][j]+lvl;
-    if(e<state.draft+.2){S[i][j]=2;red++}else if(e<state.draft+.7||(g.est&&g.est[i][j])){S[i][j]=1;amb++}   // il bassofondo stimato resta sempre "margine ridotto"
-  }
-  if(red+amb){
-    const U=upsample(S,ZQ),W=waterMask(g);
+  navLayer.clearLayers();
+  if(!data.grid||state.mode!=='barca')return null;
+  const lvl=h.level==null?0:h.level;
+  const cls=g=>{
+    const N=g.lats.length,S=g.water.map(r=>r.map(()=>0));let red=0,amb=0,tot=0;
+    for(let i=0;i<N;i++)for(let j=0;j<N;j++){
+      if(!g.open[i][j])continue;tot++;
+      const e=g.dep[i][j]+lvl;
+      if(e<state.draft+.2){S[i][j]=2;red++}else if(e<state.draft+.7||(g.est&&g.est[i][j])){S[i][j]=1;amb++}   // il bassofondo stimato resta sempre "margine ridotto"
+    }
+    return {S,red,amb,tot};
+  };
+  const st=cls(data.grid),g=mapGrid(),m=g===data.grid?st:cls(g);   // percentuali sul raggio, disegno su tutta la mappa caricata
+  if(m.red+m.amb){
+    const U=upsample(m.S,zqOf(g.lats.length)),W=waterMask(g);
     overlayImage(navLayer,'nav',g,D=>{
       for(let k=0;k<U.length;k++){
         const s=U[k],al=.38*Math.max(0,Math.min(1,(s-.3)*3))*W[k];if(al<.01)continue;
@@ -1371,15 +1442,15 @@ function drawNav(h){
       }
     });
   }
-  return {red,amb,tot,lvl};
+  return {red:st.red,amb:st.amb,tot:st.tot,lvl};
 }
 const HEATCOL=['#ffb3ec','#ff5fd0','#e0009a'];
 function drawHeat(){
-  heatLayer.clearLayers();const d=data,g=d.grid;if(!g||!d.heat.length)return;
-  const mx=d.heatMax||1,T=g.water.map(r=>r.map(()=>0));
-  for(const c of d.heat)T[c.i][c.j]=Math.max(0,(c.score/mx-.6)/.4);   // solo il 40% alto del punteggio
+  heatLayer.clearLayers();const d=data,V=view&&view.grid&&view.heat?view:null,g=V?V.grid:d.grid,heat=V?V.heat:d.heat;if(!g||!heat.length)return;
+  const N=g.lats.length,mx=d.heatMax||1,T=g.water.map(r=>r.map(()=>0));
+  for(const c of heat)T[c.i][c.j]=Math.max(0,(c.score/mx-.6)/.4);   // solo il 40% alto del punteggio
   const soft=A=>A.map((r,i)=>r.map((v,j)=>{if(!g.water[i][j])return 0;let s=v*2,n=2;for(const [a,b] of [[1,0],[-1,0],[0,1],[0,-1]]){const y=i+a,x=j+b;if(y>=0&&x>=0&&y<N&&x<N&&g.water[y][x]){s+=A[y][x];n++}}return s/n}));
-  const U=upsample(soft(state.mode==='riva'?soft(T):T),ZQ),W=waterMask(g);
+  const U=upsample(soft(state.mode==='riva'?soft(T):T),zqOf(N)),W=waterMask(g);
   overlayImage(heatLayer,'heat',g,D=>{
     for(let k=0;k<U.length;k++){
       const t=Math.min(1,U[k]),al=(.22+.5*t)*Math.min(1,t*4)*W[k];if(al<.01)continue;
@@ -1436,11 +1507,11 @@ function render(){
   $('#days').innerHTML=d.days.map((x,i)=>`<button type="button" class="opt" data-d="${i}" aria-pressed="${i===state.selDay}">${i===0?'Oggi':dayName(x.t)}</button>`).join('');
   $$('#days .opt').forEach(b=>b.onclick=()=>{state.selDay=+b.dataset.d;state.selHour=-1;render()});
   const sel=H[state.selHour],spots=rankLive(findSpots(d,state.sp,state.mode),S,sel);
-  d.H=H;d.spots=spots;drawHeat();d.nav=drawNav(sel);drawSpots(spots);
+  d.H=H;d.spots=spots;scoreView();drawHeat();d.nav=drawNav(sel);drawSpots(spots);
   if(d.grid&&state.mode==='barca')spots.forEach(s=>s.route=routeMin(d.grid,d.lat,d.lon,s.la,s.lo,sel.level==null?0:sel.level));
   const now=sel,Hd=day.idx.map(i=>H[i]),best=windows(Hd)[0],isNow=state.selHour===0;
   let refDep=null;
-  if(d.grid){const c=(N-1)/2,v=d.grid.dep[c][c];if(!isNaN(v))refDep=v}
+  if(d.grid){const c=(d.grid.lats.length-1)/2,v=d.grid.dep[c][c];if(!isNaN(v))refDep=v}
   d.refDep=refDep;
   const missing=[];if(!d.grid)missing.push('batimetria');if(!d.met||!d.met.hasM)missing.push('dati del mare');if(!d.met||!d.met.hasF)missing.push('meteo (il servizio può aver raggiunto il limite di richieste: di solito torna entro un\'ora)');
   setStatus(d.cached?'Senza rete: mostro i dati salvati il '+new Date(d.cached).toLocaleString('it-IT',{dateStyle:'short',timeStyle:'short'})+'.':missing.length?'Non disponibili per questo punto: '+missing.join(', ')+'. Controlla la connessione o sposta il target in mare.':d.pending?'Carico canali, barene e strutture (nelle ore piene può servire fino a un minuto)…':d.osmFail&&d.grid?'Canali, barene e strutture non caricati: il servizio OpenStreetMap è occupato. Fondali e isobate restano validi; riprova tra qualche minuto.':'Tocca la mappa per i dati di un punto; da lì puoi spostare il target.',!!(d.cached||missing.length||(d.osmFail&&d.grid&&!d.pending)));
@@ -1674,8 +1745,8 @@ async function analyze(){
   const {lat,lon,R}=state,dLa=R/MLAT,dLo=R/mlon(lat);
   refMarker.setLatLng([lat,lon]);areaRect.setBounds([[lat-dLa,lon-dLo],[lat+dLa,lon+dLo]]);
   setStatus('Carico batimetria, meteo e mare…');
-  const pStruct=loadStructs(lat,lon,R).catch(()=>null);
-  let [grid,met,hr]=await Promise.all([loadGrid(lat,lon,R,run).catch(()=>null),loadMeteo(lat,lon).catch(()=>null),loadHR(lat,lon,R).catch(()=>null)]);
+  const osmR=Math.max(R,6000),pStruct=loadStructs(lat,lon,osmR).catch(()=>null);   // almeno 6 km: copre anche la mappa attorno al raggio
+  let [grid,met,hr]=await Promise.all([loadGrid(lat,lon,R,()=>run===state.run).catch(()=>null),loadMeteo(lat,lon).catch(()=>null),loadHR(lat,lon,R).catch(()=>null)]);
   if(run!==state.run)return;
   if(grid){applyHR(grid,hr);deriveGrid(grid)}
   let cached=null,cst=[];
@@ -1687,17 +1758,19 @@ async function analyze(){
   data={lat,lon,R,grid,met,hr:grid&&grid.hr?hr:null,cached,structs:cst,lines:[],areas:[],pending:!cached,sol:solunar(lat,lon,Date.now())};
   state.selHour=0;drawStatic();render();
   if(cached)return;
+  scheduleView();                                           // il resto della mappa si carica subito, senza aspettare canali e strutture
   let st=await pStruct;                                     // canali e strutture arrivano dopo, senza bloccare la mappa
   if(run!==state.run)return;
-  if(st)store.set('cartapesca_osm',{lat,lon,R,st});         // l'ultima risposta resta salvata: serve quando il servizio è occupato
+  if(st)store.set('cartapesca_osm',{lat,lon,R:osmR,st});         // l'ultima risposta resta salvata: serve quando il servizio è occupato
   else{const c=store.get('cartapesca_osm',null);if(c&&c.st&&c.R>=R&&dist(c.lat,c.lon,lat,lon)<=c.R-R+300)st=c.st}
   data.pending=false;data.osmFail=!st;
+  if(st){osmCache.push({lat,lon,R:osmR,st});if(osmCache.length>6)osmCache.shift();viewAdoptOsm()}
   if(st){
     if(grid){const a=applyCoast(grid,st.coast),b=applyLagoon(grid,st);if(a||b)deriveGrid(grid)}
     data.structs=filterStructs(st.pts,grid);data.lines=st.lines;data.areas=st.areas;drawStatic();
   }
   if(grid&&met)store.set('cartapesca_last',slim(data));
-  render();
+  render();scheduleView();viewOsm();
 }
 let deb=null;
 function setPoint(lat,lon,fly){
