@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Carta di pesca</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout: mappa in alto (a sinistra su schermi larghi), pannello a schede sotto. Carta nautica chiara, leggibile al sole. */
+  --ink:#0e2a3b; --paper:#e9eff1; --card:#ffffff; --sea:#0f6e84; --accent:#e8590c;
+  --line:#cdd8dd; --muted:#557080; --good:#1f8a5b; --warn:#c0392b;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--paper);color:var(--ink);font:400 15px/1.45 var(--body)}
+h1,h2,h3{font-family:var(--display);margin:0;letter-spacing:.01em;text-wrap:balance}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+header{background:var(--ink);color:#fff;padding:8px 12px 10px;display:flex;flex-direction:column;gap:8px}
+.top{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.top h1{font-size:20px;text-transform:uppercase}
+.top p{margin:0;font-size:13px;opacity:.8}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+.chip{flex:none;border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;border-radius:999px;padding:0 15px;min-height:42px;font-size:16px;font-weight:500}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);font-weight:600}
+.ctl{display:flex;gap:8px;align-items:stretch}
+.ctl select,.ctl input,.ctl button{background:#16384c;border:1px solid #2f556b;color:#fff;border-radius:8px;padding:7px 12px;min-height:44px;font-size:16px}
+.ctl select{flex:1;min-width:0}
+.seg{flex:1.6}
+.seg button{flex:1;white-space:nowrap}
+.ctl input{flex:1 1 150px;min-width:0}
+.ctl input::placeholder{color:#a9bfca}
+.seg{display:flex;border:1px solid #2f556b;border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:#16384c}
+.seg button[aria-pressed="true"]{background:#fff;color:var(--ink);font-weight:600}
+.wrap{display:flex;flex-direction:column}
+.mapbox{position:relative;height:56vh;height:56svh;min-height:320px}
+#map{height:100%;background:#bcd3dc;z-index:0}
+.cross{position:absolute;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;pointer-events:none;z-index:500;
+  background:linear-gradient(var(--accent),var(--accent)) center/2px 100% no-repeat,linear-gradient(var(--accent),var(--accent)) center/100% 2px no-repeat;filter:drop-shadow(0 0 1.5px #fff)}
+#setpt{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);z-index:500;background:var(--accent);color:#fff;border:2px solid #fff;border-radius:999px;
+  min-height:48px;padding:0 22px;font:600 17px var(--body);box-shadow:0 2px 8px rgba(0,0,0,.4);white-space:nowrap}
+main{padding:12px 12px calc(84px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px;min-width:0}
+@media(min-width:900px){
+  .wrap{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(380px,.85fr);height:calc(100% - var(--hh,150px))}
+  .mapbox{height:100%}
+  main{overflow-y:auto;padding:14px 16px 28px}
+  .tabs{position:static;border-top:0;border-bottom:2px solid var(--line);background:none;padding:0;box-shadow:none}
+  .tabs button{flex:none;min-height:0;padding:8px 12px;border-top:0;border-bottom:3px solid transparent;margin-bottom:-2px}
+  .tabs button[aria-selected="true"]{border-bottom-color:var(--accent)}
+}
+#status{font-size:13px;color:var(--muted);min-height:1.4em}
+#status.err{color:var(--warn);font-weight:500}
+.sum{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--accent);border-radius:10px;padding:12px 14px}
+.sum h2{font-size:22px}
+.sum p{margin:4px 0 0}
+.tabs{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:1000;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -2px 10px rgba(14,42,59,.12)}
+.tabs button{flex:1;min-width:0;min-height:56px;background:none;border:0;border-top:3px solid transparent;padding:4px 2px;font-family:var(--display);font-size:17px;font-weight:600;color:var(--muted)}
+.tabs button[aria-selected="true"]{color:var(--ink);border-top-color:var(--accent)}
+.pane{display:none;flex-direction:column;gap:12px}
+.pane.on{display:flex}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.card h3{font-size:19px;margin-bottom:6px}
+.spot{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:start;text-align:left;width:100%}
+.num{width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;font:700 16px/30px var(--display);text-align:center}
+.spot b{font-family:var(--display);font-size:19px}
+.spot ul,.guide ul{margin:4px 0 0;padding-left:18px}
+.spot{min-height:56px}
+.spot small,.note{color:var(--muted);font-size:13px}
+.score{font:700 20px var(--display);font-variant-numeric:tabular-nums;color:var(--sea)}
+.score span{display:block;font:400 11px var(--body);color:var(--muted);text-align:right}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+.tile span{display:block;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.tile b{font:700 22px var(--display);font-variant-numeric:tabular-nums}
+.tile i{display:block;font-style:normal;font-size:12.5px;color:var(--muted)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:14px}
+th,td{padding:5px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:600;color:var(--muted);font-size:12.5px}
+.bars{display:flex;align-items:flex-end;gap:2px;height:130px;min-width:560px;border-bottom:1px solid var(--line)}
+.bar{flex:1;border:0;padding:0;border-radius:3px 3px 0 0;background:#a9c3cd;position:relative;min-width:8px}
+.bar.mid{background:var(--sea)}
+.bar.hi{background:var(--accent)}
+.bar.sel{outline:2px solid var(--ink)}
+.bar.risk::after{content:"";position:absolute;left:0;right:0;top:-6px;height:4px;background:var(--warn);border-radius:2px}
+.axis{display:flex;gap:2px;min-width:560px;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.axis span{flex:1;min-width:8px;text-align:left;white-space:nowrap;overflow:visible}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.win{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
+.win:last-child{border:0}
+.pill{display:inline-block;border-radius:999px;padding:1px 9px;font-size:12.5px;font-weight:600;background:#e3f1ea;color:var(--good)}
+.pill.warn{background:#f9e4e1;color:var(--warn)}
+.now{border-left:5px solid var(--sea)}
+.guide dt{font-weight:600;margin-top:8px}
+.guide dd{margin:0}
+svg text{font:11px var(--body);fill:var(--muted)}
+.pin{background:var(--accent);color:#fff;border:2px solid #fff;border-radius:50%;font:700 14px/24px var(--display);text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.45)}
+.ref{background:var(--ink);border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 2px var(--ink),0 1px 5px rgba(0,0,0,.5)}
+.isol{background:rgba(255,255,255,.85);border-radius:3px;font:600 11px var(--body);color:#0b4a63;padding:0 3px;white-space:nowrap}
+footer{font-size:12.5px;color:var(--muted)}
+footer a{color:var(--sea)}
+</style>
+</head>
+<body>
+<header id="hd">
+  <div class="top"><h1>Carta di pesca</h1></div>
+  <div class="chips" id="chips" role="group" aria-label="Specie"></div>
+  <div class="ctl">
+    <div class="seg" role="group" aria-label="Da dove peschi">
+      <button id="mBarca" type="button">Dalla barca</button><button id="mRiva" type="button">Da riva</button>
+    </div>
+    <select id="radius" aria-label="Raggio di ricerca">
+      <option value="1000">Raggio 1 km</option><option value="2000">Raggio 2 km</option><option value="3000">Raggio 3 km</option>
+      <option value="5000">Raggio 5 km</option><option value="10000">Raggio 10 km</option>
+    </select>
+  </div>
+  <div class="ctl">
+    <input id="place" type="search" placeholder="Cerca località (es. Chioggia)" aria-label="Cerca località">
+    <button id="go" type="button">Cerca</button>
+    <button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button>
+  </div>
+</header>
+<div class="wrap">
+  <div class="mapbox">
+    <div id="map"></div>
+    <div class="cross" aria-hidden="true"></div>
+    <button id="setpt" type="button">Imposta qui il punto</button>
+  </div>
+  <main>
+    <div id="status" role="status"></div>
+    <section class="sum" id="sum"></section>
+    <div class="tabs" role="tablist">
+      <button role="tab" data-t="spot" aria-selected="true">Spot</button>
+      <button role="tab" data-t="att" aria-selected="false">Attività</button>
+      <button role="tab" data-t="mare" aria-selected="false">Mare</button>
+      <button role="tab" data-t="esche" aria-selected="false">Esche</button>
+    </div>
+    <section class="pane on" id="p-spot"></section>
+    <section class="pane" id="p-att"></section>
+    <section class="pane" id="p-mare"></section>
+    <section class="pane" id="p-esche"></section>
+    <footer>
+      Dati: batimetria <a href="https://emodnet.ec.europa.eu/en/bathymetry">EMODnet</a> (mari europei, griglia ~115 m), meteo e mare <a href="https://open-meteo.com">Open-Meteo</a>, strutture <a href="https://www.openstreetmap.org">OpenStreetMap</a>. Gli spot sono stime calcolate da fondale, pendenza e strutture: non sostituiscono la carta nautica ufficiale né l'ecoscandaglio. Il livello del mare viene da un modello a 8 km ed è indicativo. Verifica sempre divieti locali (porti, aree marine protette, ordinanze della Capitaneria) e taglie minime.
+    </footer>
+  </main>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
+<script>
+'use strict';
+/* ---------- Specie ---------- */
+const STRUCT_LABEL={foce:'foce',diga:'diga o frangiflutti',pennello:'pennello',molo:'molo o pontile',scoglio:'scoglio',relitto:'relitto',secca:'secca'};
+const SPECIES={
+ branzino:{name:'Branzino',alt:'spigola',depth:[0.3,1,6,15],slopeRef:2,w:{slope:.5,struct:1,shore:.9},structs:['foce','diga','pennello','molo','scoglio'],
+  light:{alba:1,tramonto:1,notte:.8,giorno:.35},wave:[-.4,.3,1.2,2.2],temp:[7,11,18,24],tideW:1,months:[10,11,12,1,2,3],
+  dove:'Foci, dighe, moli e scogliere in 1–6 m d\'acqua, dove c\'è schiuma o corrente. Sta vicino agli ostacoli e caccia nell\'acqua mossa e velata.',
+  quando:'Alba, tramonto e notte. Rende di più con mare in scaduta o leggermente mosso e in foce con marea calante. Stagione migliore: da ottobre a marzo.',
+  esche:['Minnow 9–14 cm a galla o poco affondanti','Soft shad 10–12 cm su testina 7–14 g','Topwater (WTD) all\'alba con mare calmo','Vivo: cefaletto, gambero, anguillina; innesco: coreano, americano, bibi'],
+  colori:{limpida:'Naturali e traslucidi: sardina, cefalo, ghost.',torbida:'Chiari e visibili: bianco, perla, chartreuse.',buio:'Sagoma netta: nero o scuro; in alternativa bianco pieno.'},
+  tecnica:['Lancia nella schiuma e parallelo alla scogliera o al piede della diga.','Recupero lento con pause; l\'attacco arriva spesso alla ripartenza.','In foce pesca dove la corrente dolce incontra il mare, sul filo di corrente.','Avvicinati in silenzio: in poca acqua il branzino sta a pochi metri da riva.'],
+  attrezzatura:'Canna spinning 2,4–2,7 m da 10–35 g, trecciato 0,12–0,15, finale fluorocarbon 0,26–0,30.',taglia:'Taglia minima 25 cm.'},
+ orata:{name:'Orata',depth:[0.8,2,12,30],slopeRef:2,w:{slope:.4,struct:.7,shore:.5},structs:['molo','diga','pennello','scoglio'],
+  light:{alba:.8,tramonto:.8,giorno:.8,notte:.35},wave:[-.5,.1,.8,1.6],temp:[12,17,24,28],tideW:.9,months:[4,5,6,9,10,11],
+  dove:'Fondali di sabbia mista a roccia o posidonia, piloni e scogliere con cozze, canali di laguna, in 2–12 m.',
+  quando:'Di giorno con marea in movimento, meglio con mare in leggera scaduta. Da aprile a novembre; in autunno si raduna in branchi.',
+  esche:['Granchio (intero o a metà)','Cozza sgusciata o intera','Bibi, americano, cannolicchio','Paguro'],
+  colori:{limpida:'Il colore non conta: conta la presentazione. Finale lungo e sottile, niente perline.',torbida:'Esche odorose e voluminose: granchio, cozza, bibi.',buio:'Di notte mangia poco: meglio aspettare l\'alba.'},
+  tecnica:['Finale lungo 1,5–2 m in fluorocarbon 0,22–0,28 e amo robusto: ha una bocca che schiaccia.','Lascia mangiare: aspetta la partenza decisa prima di ferrare.','Frizione morbida, le prime fughe sono violente.','Dalla barca: bolentino leggero ancorato sopravento allo scalino.'],
+  attrezzatura:'Surfcasting o bolentino leggero, piombo scorrevole 40–100 g.',taglia:'Taglia minima 20 cm.'},
+ serra:{name:'Pesce serra',depth:[0.5,2,10,25],slopeRef:2,w:{slope:.4,struct:1,shore:.7},structs:['foce','diga','molo'],
+  light:{alba:1,tramonto:1,notte:.85,giorno:.3},wave:[-.5,.2,1,1.8],temp:[15,19,25,29],tideW:.8,months:[5,6,7,8,9,10,11],
+  dove:'Foci, imboccature dei porti e spiagge profonde, dove passano cefali e aguglie.',
+  quando:'Alba, tramonto e prime ore di buio, con acqua calda. Da maggio a novembre.',
+  esche:['Popper e WTD 12–16 cm','Long jerk e minnow 12–18 cm','Metal jig 20–40 g','Vivo: cefalo o aguglia; trancio di pesce'],
+  colori:{limpida:'Argento, blu sardina, bianco.',torbida:'Bianco, chartreuse, rosa.',buio:'Bianco pieno o nero in superficie.'},
+  tecnica:['Recupero veloce e irregolare: se rallenti perde interesse.','Usa un cavetto d\'acciaio o fluorocarbon dallo 0,60 in su: taglia il filo con i denti.','Ferra deciso e tieni il filo in tensione, salta fuori dall\'acqua per slamarsi.','Slamalo con le pinze: morde.'],
+  attrezzatura:'Spinning 2,7–3 m da 20–60 g, trecciato 0,17–0,20.',taglia:''},
+ calamaro:{name:'Calamaro',depth:[2,5,25,50],slopeRef:3,w:{slope:.7,struct:.7,shore:.3},structs:['molo','diga','scoglio'],
+  light:{tramonto:1,notte:.9,alba:.85,giorno:.15},wave:[-1,0,.4,1],temp:[10,13,18,22],tideW:.5,months:[10,11,12,1,2,3],
+  dove:'Scalini e fondali misti in 5–25 m; da riva moli e scogliere con fondale profondo, meglio se illuminati.',
+  quando:'Dal tramonto all\'alba con mare calmo e acqua limpida. Da ottobre a marzo.',
+  esche:['Egi (totanare) misura 2.5–3.5','Tataki con 2–3 oplà dalla barca','Totanara con sardina per la traina lenta'],
+  colori:{limpida:'Naturali: sardina, verde, marrone, con base trasparente o arcobaleno.',torbida:'Rosa e arancio con base oro o rossa.',buio:'Rosa o arancio con base glow; ricarica la fosforescenza con la torcia.'},
+  tecnica:['Lancia, lascia affondare contando, poi 2–3 jerkate e pausa: attacca in caduta.','Cambia profondità finché non trovi la fascia giusta, poi ripetila.','Dalla barca: scarroccio lento con tataki poco sopra il fondo.','Recupera costante senza pompare, i tentacoli si strappano.'],
+  attrezzatura:'Canna da eging 2,4–2,6 m, trecciato 0,10–0,12, finale fluorocarbon 0,20–0,23.',taglia:''},
+ seppia:{name:'Seppia',depth:[0.8,2,15,35],slopeRef:2,w:{slope:.3,struct:.6,shore:.6},structs:['diga','pennello','molo','scoglio'],
+  light:{alba:.9,tramonto:1,giorno:.6,notte:.6},wave:[-1,0,.4,.9],temp:[10,14,20,24],tideW:.5,months:[3,4,5,9,10,11],
+  dove:'Fondali di sabbia e posidonia vicino a scogliere e pennelli, in 2–15 m. In primavera viene sotto costa a deporre.',
+  quando:'Tramonto e alba con mare calmo e acqua limpida. Primavera (marzo–maggio) e autunno.',
+  esche:['Egi 2.5–3.0 affondanti','Egi con piombo a 30–40 cm per la barca','Gamberone artificiale'],
+  colori:{limpida:'Naturali: verde, marrone, sardina.',torbida:'Rosa, arancio, bianco.',buio:'Base glow o rossa con dorso rosa o arancio.'},
+  tecnica:['Tieni l\'esca radente al fondo: la seppia non sale.','Recupero lentissimo con pause lunghe; senti un peso morto, non una botta.','Dalla barca scarroccia piano con il piombo che tocca il fondo.','Guadino sempre: fuori dall\'acqua si stacca.'],
+  attrezzatura:'Canna da eging o spinning leggero, trecciato 0,10–0,12.',taglia:''},
+ dentice:{name:'Dentice',depth:[10,25,60,100],slopeRef:8,w:{slope:1,struct:.8,shore:0},structs:['relitto','scoglio','secca'],
+  light:{alba:1,tramonto:.9,giorno:.5,notte:.2},wave:[-.5,.1,1,1.8],temp:[13,16,23,27],tideW:.8,months:[4,5,6,9,10,11],
+  dove:'Secche, scalini ripidi, relitti e roccia in 25–60 m. Sta sul lato dove batte la corrente.',
+  quando:'Alba e tramonto, al cambio di marea o quando parte la corrente. Da aprile a novembre.',
+  esche:['Vivo a traina: calamaro, seppia, aguglia, sugarello','Slow e vertical jig 60–150 g','Inchiku e kabura'],
+  colori:{limpida:'Sardina, argento, rosa tenue.',torbida:'Rosa, arancio, glow.',buio:'In profondità e con poca luce: glow e arancio.'},
+  tecnica:['Traina il vivo a 1–1,5 nodi a 1–2 m dal fondo, con affondatore o piombo guardiano.','Con il jig: tocca il fondo, lavora i primi 5–10 m e ridiscendi.','Alla mangiata frizione chiusa: va staccato subito dal fondo.','Ripassa più volte sullo stesso scalino da direzioni diverse.'],
+  attrezzatura:'Canna da traina 12–20 lb o slow jigging, trecciato 0,20–0,26, finale 0,50–0,60.',taglia:''},
+ ricciola:{name:'Ricciola',depth:[8,20,60,120],slopeRef:8,w:{slope:1,struct:1,shore:0},structs:['relitto','secca','scoglio'],
+  light:{alba:1,giorno:.6,tramonto:.8,notte:.15},wave:[-.5,.1,1,1.8],temp:[15,18,25,29],tideW:.8,months:[5,6,7,8,9,10,11],
+  dove:'Secche, relitti e punte battute dalla corrente in 20–60 m; i giovani anche sotto costa.',
+  quando:'Alba e mattina con corrente. Da maggio a novembre.',
+  esche:['Vivo a traina: aguglia, calamaro, sugarello, cefalo','Vertical jig lunghi 100–200 g','Popper e stickbait per le ricciole giovani'],
+  colori:{limpida:'Argento, blu, sardina.',torbida:'Rosa, bianco, glow.',buio:'Glow in profondità.'},
+  tecnica:['Traina il vivo a 1,5–2,5 nodi a mezz\'acqua sopra la secca.','Con il jig: recupero veloce a strappi lunghi dal fondo fino a mezz\'acqua.','Combatti deciso: cerca subito il relitto o la roccia.','Segna il punto delle mangiate: i branchi girano sempre negli stessi passaggi.'],
+  attrezzatura:'Traina 20–30 lb o vertical, trecciato 0,26–0,32, finale 0,60–0,80.',taglia:''},
+ palamita:{name:'Palamita',depth:[8,20,80,300],slopeRef:6,w:{slope:.8,struct:.2,shore:0},structs:['secca'],
+  light:{alba:1,giorno:.7,tramonto:.8,notte:.1},wave:[-.5,.1,1,1.8],temp:[14,17,24,27],tideW:.6,months:[8,9,10,11,12],
+  dove:'Acqua aperta su scalini e linee di corrente, dove gabbiani e sterne segnalano le mangianze.',
+  quando:'Alba e mattinata. Da fine estate a dicembre.',
+  esche:['Traina veloce con piumette e minnow 7–11 cm','Metal jig 15–40 g sulle mangianze','Cucchiaini ondulanti'],
+  colori:{limpida:'Argento, blu, bianco.',torbida:'Bianco, rosa, chartreuse.',buio:'Poco attiva al buio.'},
+  tecnica:['Traina a 4–6 nodi con le esche a 20–40 m dalla barca.','Sulle mangianze fermati sopravento, lancia oltre il branco e recupera veloce.','Non attraversare la mangianza con la barca: il branco affonda.','Segui gli uccelli: si spostano in fretta.'],
+  attrezzatura:'Traina leggera 6–12 lb o spinning 15–40 g.',taglia:''}
+};
+
+/* ---------- Utilità ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const trap=(x,[a,b,c,d])=>x<=a||x>=d?0:x<b?(x-a)/(b-a):x<=c?1:(d-x)/(d-c);
+const RAD=Math.PI/180, MLAT=111320;
+const mlon=lat=>MLAT*Math.cos(lat*RAD);
+const dist=(a,b,c,d)=>Math.hypot((c-a)*MLAT,(d-b)*mlon(a));
+const CARD=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'];
+const card=d=>d==null?'':CARD[Math.round(d/22.5)%16];
+const bearing=(a,b,c,d)=>(Math.atan2((d-b)*mlon(a),(c-a)*MLAT)/RAD+360)%360;
+const dm=(v,pos,neg)=>{const a=Math.abs(v),g=Math.floor(a);return g+'°'+((a-g)*60).toFixed(3).padStart(6,'0')+"'"+(v>=0?pos:neg)};
+const coord=(la,lo)=>dm(la,'N','S')+' '+dm(lo,'E','O');
+const n1=(v,u='')=>v==null?'n.d.':(Math.round(v*10)/10).toLocaleString('it-IT')+u;
+const n0=(v,u='')=>v==null?'n.d.':Math.round(v)+u;
+let tzOff=-new Date().getTimezoneOffset()*60;
+const loc=ms=>new Date(ms+tzOff*1000);
+const hh=ms=>{const d=loc(ms);return String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0')};
+const DAYS=['dom','lun','mar','mer','gio','ven','sab'];
+const dayName=ms=>{const d=loc(ms);return DAYS[d.getUTCDay()]+' '+d.getUTCDate()};
+const kmLabel=m=>m<950?Math.round(m/10)*10+' m':(m/1000).toFixed(1).replace('.',',')+' km';
+
+/* ---------- Stato ---------- */
+const state={lat:45.2290,lon:12.3140,sp:'branzino',mode:'barca',R:3000,example:true,run:0,tab:'spot',selHour:0};
+try{const s=JSON.parse(localStorage.getItem('cartapesca')||'null');if(s&&isFinite(s.lat)&&SPECIES[s.sp])Object.assign(state,s,{run:0,selHour:0})}catch(e){}
+const save=()=>{try{const {lat,lon,sp,mode,R,example,tab}=state;localStorage.setItem('cartapesca',JSON.stringify({lat,lon,sp,mode,R,example,tab}))}catch(e){}};
+let data=null;
+const setStatus=(t,err)=>{const s=$('#status');s.textContent=t||'';s.className=err?'err':''};
+
+/* ---------- Caricamento dati ---------- */
+const N=31;
+async function loadGrid(lat,lon,R,run){
+  const dLa=R/MLAT,dLo=R/mlon(lat);
+  const lats=Array.from({length:N},(_,i)=>lat-dLa+2*dLa*i/(N-1));
+  const lons=Array.from({length:N},(_,j)=>lon-dLo+2*dLo*j/(N-1));
+  const z=lats.map(()=>new Array(N).fill(NaN));
+  let next=0,done=0,ok=0;
+  async function worker(){
+    while(next<N){
+      const i=next++;
+      try{
+        const g=`LINESTRING(${lons[0].toFixed(6)} ${lats[i].toFixed(6)},${lons[N-1].toFixed(6)} ${lats[i].toFixed(6)})`;
+        const r=await fetch('https://rest.emodnet-bathymetry.eu/depth_profile?geom='+encodeURIComponent(g));
+        const a=await r.json();
+        if(Array.isArray(a)&&a.length>1){
+          for(let j=0;j<N;j++){const v=a[Math.round(j/(N-1)*(a.length-1))];z[i][j]=typeof v==='number'?v:NaN}
+          ok++;
+        }
+      }catch(e){}
+      done++;
+      if(run===state.run)setStatus(`Carico la batimetria: ${done} di ${N} profili…`);
+    }
+  }
+  await Promise.all(Array.from({length:6},worker));
+  if(!ok)return null;
+  return deriveGrid({lats,lons,z,cell:2*R/(N-1)});
+}
+function deriveGrid(g){
+  const {z,cell}=g;
+  const dep=z.map(r=>r.map(v=>-v));                       // profondità positiva verso il basso
+  const water=dep.map(r=>r.map(v=>v>0.2));
+  const land=[];
+  for(let i=0;i<N;i++)for(let j=0;j<N;j++)if(!isNaN(dep[i][j])&&!water[i][j])land.push([i,j]);
+  const dLand=dep.map((r,i)=>r.map((v,j)=>{
+    if(!water[i][j])return 0;let m=Infinity;
+    for(const [a,b] of land){const d=Math.hypot(a-i,b-j);if(d<m)m=d}
+    return m*cell;
+  }));
+  const at=(i,j,fi,fj)=>{i=Math.min(N-1,Math.max(0,i));j=Math.min(N-1,Math.max(0,j));const v=dep[i][j];return isNaN(v)?Math.max(0,dep[fi][fj]):Math.max(0,v)};
+  const slope=dep.map((r,i)=>r.map((v,j)=>{
+    if(!water[i][j])return 0;
+    const gx=(at(i,j+1,i,j)-at(i,j-1,i,j))/(2*cell),gy=(at(i+1,j,i,j)-at(i-1,j,i,j))/(2*cell);
+    return Math.hypot(gx,gy)*100;                           // metri di dislivello ogni 100 m
+  }));
+  return Object.assign(g,{dep,water,dLand,slope,hasLand:land.length>0});
+}
+async function loadMeteo(lat,lon){
+  const q=`latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&timeformat=unixtime&timezone=auto&forecast_days=3`;
+  const js=u=>fetch(u).then(r=>r.ok?r.json():Promise.reject(new Error('http')));
+  const mu='https://marine-api.open-meteo.com/v1/marine?'+q+'&cell_selection=sea&hourly=wave_height,wave_direction,wave_period';
+  const [F,M]=await Promise.all([
+    js('https://api.open-meteo.com/v1/forecast?'+q+'&wind_speed_unit=kn&hourly=temperature_2m,precipitation,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m').catch(()=>null),
+    js(mu+',sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction').catch(()=>js(mu).catch(()=>null))
+  ]);
+  const src=F||M;if(!src||!src.hourly||!src.hourly.time)return null;
+  const off=src.utc_offset_seconds||0,times=src.hourly.time,now=Date.now()/1000;
+  let s=times.findIndex(t=>t+3600>now);if(s<0)s=0;
+  const mi={};if(M&&M.hourly)M.hourly.time.forEach((t,i)=>mi[t]=i);
+  const g=(o,k,i)=>{const a=o&&o.hourly&&o.hourly[k];const v=a&&i!=null?a[i]:null;return v==null?null:v};
+  const hours=[];
+  for(let i=s;i<Math.min(times.length,s+48);i++){
+    const t=times[i],fi=F?i:null,k=M?mi[t]:null,cur=g(M,'ocean_current_velocity',k);
+    hours.push({t:t*1000,air:g(F,'temperature_2m',fi),rain:g(F,'precipitation',fi),cloud:g(F,'cloud_cover',fi),pres:g(F,'pressure_msl',fi),
+      wind:g(F,'wind_speed_10m',fi),wdir:g(F,'wind_direction_10m',fi),gust:g(F,'wind_gusts_10m',fi),
+      wave:g(M,'wave_height',k),wavedir:g(M,'wave_direction',k),waveper:g(M,'wave_period',k),
+      sst:g(M,'sea_surface_temperature',k),level:g(M,'sea_level_height_msl',k),cur:cur==null?null:cur/1.852,curdir:g(M,'ocean_current_direction',k)});
+  }
+  return {off,hours,hasF:!!F,hasM:!!M};
+}
+async function loadStructs(lat,lon,R){
+  const dLa=R/MLAT,dLo=R/mlon(lat),bb=[lat-dLa,lon-dLo,lat+dLa,lon+dLo].map(v=>v.toFixed(5)).join(',');
+  const q=`[out:json][timeout:15];(way["man_made"~"^(breakwater|groyne|pier)$"](${bb});node["seamark:type"~"^(wreck|rock)$"](${bb});node["natural"="reef"](${bb});way["waterway"="river"](${bb}););out geom 300;`;
+  const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),16000);
+  try{
+    const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'},signal:ac.signal});
+    const j=await r.json(),out=[];
+    for(const e of j.elements||[]){
+      const tg=e.tags||{},name=tg.name||tg['seamark:name']||'';
+      if(e.type==='node'){
+        const type=tg['seamark:type']==='wreck'?'relitto':tg.natural==='reef'?'secca':'scoglio';
+        out.push({lat:e.lat,lon:e.lon,type,name});
+      }else if(e.geometry&&e.geometry.length){
+        const gm=e.geometry,ends=[gm[0],gm[gm.length-1]];
+        if(tg.waterway==='river'){for(const p of ends)out.push({lat:p.lat,lon:p.lon,type:'foce',name,river:true})}
+        else{
+          const type=tg.man_made==='breakwater'?'diga':tg.man_made==='groyne'?'pennello':'molo';
+          for(const p of [...ends,gm[gm.length>>1]])out.push({lat:p.lat,lon:p.lon,type,name});
+        }
+      }
+    }
+    return out;
+  }finally{clearTimeout(tm)}
+}
+function filterStructs(st,g){
+  if(!g)return st.filter(s=>!s.river);
+  const {lats,lons}=g,cellOf=s=>[Math.round((s.lat-lats[0])/(lats[N-1]-lats[0])*(N-1)),Math.round((s.lon-lons[0])/(lons[N-1]-lons[0])*(N-1))];
+  const nearWater=(i,j,r)=>{for(let a=i-r;a<=i+r;a++)for(let b=j-r;b<=j+r;b++)if(a>=0&&b>=0&&a<N&&b<N&&g.water[a][b])return true;return false};
+  const seen=new Set();
+  return st.filter(s=>{
+    const [i,j]=cellOf(s);if(i<0||j<0||i>=N||j>=N)return false;
+    if(s.river&&!nearWater(i,j,2))return false;          // tiene solo gli sbocchi a mare
+    const k=s.type+i+'_'+j;if(seen.has(k))return false;seen.add(k);return true;
+  });
+}
+
+/* ---------- Astronomia e attività ---------- */
+function solunar(lat,lon,t0){
+  const ev=[],step=5*60e3;let pa=null,pp=null;
+  for(let t=t0-8*36e5;t<=t0+58*36e5;t+=step){
+    const a=SunCalc.getMoonPosition(new Date(t),lat,lon).altitude;
+    if(pa!==null){
+      if((pa<0)!==(a<0))ev.push({t:t-step/2,label:a>0?'Sorge la luna':'Tramonta la luna',major:false});
+      if(pp!==null){
+        if(pa>pp&&pa>=a)ev.push({t:t-step,label:'Luna al culmine',major:true});
+        if(pa<pp&&pa<=a)ev.push({t:t-step,label:'Luna agli antipodi',major:true});
+      }
+    }
+    pp=pa;pa=a;
+  }
+  return ev;
+}
+function lightAt(t,lat,lon){
+  const alt=d=>SunCalc.getPosition(new Date(d),lat,lon).altitude/RAD,a=alt(t+30*6e4),b=alt(t+40*6e4);
+  return a>6?'giorno':a<-8?'notte':b>a?'alba':'tramonto';
+}
+const PHASES=['Luna nuova','Luna crescente','Primo quarto','Gibbosa crescente','Luna piena','Gibbosa calante','Ultimo quarto','Luna calante'];
+function buildHours(d,sp){
+  const S=SPECIES[sp],hrs=d.met?d.met.hours:Array.from({length:48},(_,i)=>({t:Math.floor(Date.now()/36e5)*36e5+i*36e5}));
+  const lev=hrs.map(h=>h.level),hasLev=lev.every(v=>v!=null)&&Math.max(...lev)-Math.min(...lev)>0.05;
+  const mv=hrs.map((h,i)=>hasLev?Math.abs(lev[Math.min(hrs.length-1,i+1)]-lev[Math.max(0,i-1)]):0),mx=Math.max(...mv,1e-9);
+  return hrs.map((h,i)=>{
+    const light=lightAt(h.t,d.lat,d.lon),L=S.light[light];
+    let sol=0,solEv=null;
+    for(const e of d.sol){const dh=(h.t+18e5-e.t)/36e5,v=(e.major?1:.65)*Math.exp(-.5*(dh/(e.major?1:.6))**2);if(v>sol){sol=v;solEv=e}}
+    const ph=SunCalc.getMoonIllumination(new Date(h.t)).phase;
+    sol*=.8+.2*Math.abs(Math.cos(2*Math.PI*ph));
+    const tide=hasLev?mv[i]/mx:null,T=tide==null?.5:.5+S.tideW*(tide-.5);
+    const W=h.wave==null?.5:trap(h.wave,S.wave),K=h.sst==null?.5:trap(h.sst,S.temp);
+    const month=loc(h.t).getUTCMonth()+1,season=S.months.includes(month)?1:.85;
+    const score=Math.round(100*(.30*L+.20*sol+.15*T+.20*W+.15*K)*season);
+    const risk=(h.wind!=null&&h.wind>=18)||(h.gust!=null&&h.gust>=25)||(h.wave!=null&&h.wave>=1.5);
+    const why=[];
+    if(L>=.8)why.push(light);
+    if(sol>=.6&&solEv)why.push(solEv.major?'periodo solunare maggiore':'periodo solunare minore');
+    if(tide!=null&&tide>=.65&&S.tideW>=.6)why.push('marea in movimento');
+    if(h.wave!=null&&W>=.9)why.push('mare giusto');
+    return Object.assign({},h,{light,L,sol,tide,W,K,score,risk,why,season,ph});
+  });
+}
+function windows(H){
+  const max=Math.max(...H.map(h=>h.score)),thr=Math.max(.85*max,max-12),out=[];let cur=null;
+  H.forEach((h,i)=>{
+    if(h.score>=thr){if(!cur){cur={a:i,b:i,sum:0,why:new Set(),risk:false};out.push(cur)}cur.b=i;cur.sum+=h.score;h.why.forEach(w=>cur.why.add(w));cur.risk=cur.risk||h.risk}
+    else cur=null;
+  });
+  out.forEach(w=>w.avg=w.sum/(w.b-w.a+1));
+  return out.sort((x,y)=>y.avg-x.avg).slice(0,4).sort((x,y)=>x.a-y.a);
+}
+function tideExtremes(H){
+  const out=[];
+  for(let i=1;i<H.length-1;i++){
+    const a=H[i-1].level,b=H[i].level,c=H[i+1].level;if(a==null||b==null||c==null)continue;
+    if(b>a&&b>=c)out.push({t:H[i].t,v:b,hi:true});else if(b<a&&b<=c)out.push({t:H[i].t,v:b,hi:false});
+  }
+  return out;
+}
+
+/* ---------- Spot ---------- */
+function findSpots(d,sp,mode){
+  const g=d.grid,S=SPECIES[sp];if(!g)return [];
+  const st=d.structs.filter(s=>S.structs.includes(s.type)),cand=[];
+  for(let i=0;i<N;i++)for(let j=0;j<N;j++){
+    if(!g.water[i][j])continue;
+    const dep=g.dep[i][j],la=g.lats[i],lo=g.lons[j],dl=g.dLand[i][j];
+    if(mode==='riva'&&!(dl<=g.cell*1.6))continue;
+    const sD=trap(dep,S.depth);if(sD<=0)continue;
+    const sl=g.slope[i][j],sS=Math.min(1,sl/S.slopeRef);
+    let ds=Infinity,near=null;for(const s of st){const x=dist(la,lo,s.lat,s.lon);if(x<ds){ds=x;near=s}}
+    const sT=near?Math.exp(-ds/300):0,sH=isFinite(dl)?Math.exp(-dl/400):0;
+    const wT=st.length?S.w.struct:0,wsum=S.w.slope+wT+S.w.shore||1;
+    const score=sD*(.45+.55*(S.w.slope*sS+wT*sT+S.w.shore*sH)/wsum);
+    cand.push({i,j,la,lo,dep,sl,ds,near,dl,score,sD});
+  }
+  cand.sort((a,b)=>b.score-a.score);
+  const minSep=Math.max(300,d.R/5),pick=[];
+  for(const c of cand){if(pick.length>=6)break;if(pick.every(p=>dist(p.la,p.lo,c.la,c.lo)>=minSep))pick.push(c)}
+  return pick.map(c=>{
+    const why=[`Fondale ${n1(c.dep)} m`+(c.sD>=1?', nella fascia ideale':'')];
+    if(c.sl>=S.slopeRef*.6)why.push(`Scalino: ${n1(c.sl)} m di dislivello ogni 100 m`);
+    if(c.near&&c.ds<=450)why.push(`${STRUCT_LABEL[c.near.type]}${c.near.name?' ('+c.near.name+')':''} a ${kmLabel(c.ds)}`);
+    if(S.w.shore>0&&isFinite(c.dl)&&c.dl<=350)why.push(`Sotto costa, a circa ${kmLabel(c.dl)} da terra`);
+    return Object.assign(c,{why,pts:Math.round(c.score*100),dRef:dist(d.lat,d.lon,c.la,c.lo),brg:bearing(d.lat,d.lon,c.la,c.lo)});
+  });
+}
+function isolines(g,level){
+  const segs=[],v=g.dep,{lats,lons}=g;
+  for(let i=0;i<N-1;i++)for(let j=0;j<N-1;j++){
+    const c=[[i,j],[i,j+1],[i+1,j+1],[i+1,j]],val=c.map(([a,b])=>v[a][b]);if(val.some(isNaN))continue;
+    const pts=[];
+    for(let k=0;k<4;k++){
+      const a=val[k],b=val[(k+1)%4];
+      if((a<level)!==(b<level)){const t=(level-a)/(b-a),[i1,j1]=c[k],[i2,j2]=c[(k+1)%4];pts.push([lats[i1]+(lats[i2]-lats[i1])*t,lons[j1]+(lons[j2]-lons[j1])*t])}
+    }
+    if(pts.length===2)segs.push(pts);else if(pts.length===4)segs.push([pts[0],pts[1]],[pts[2],pts[3]]);
+  }
+  return segs;
+}
+
+/* ---------- Mappa ---------- */
+let map,refMarker,areaRect,isoLayer,spotLayer,structLayer;
+const LEVELS=[2,5,10,15,20,30,50,75,100,200],ISOCOL=['#58b6cf','#3aa0bd','#2289a8','#167592','#0f627d','#0b5069','#083f55','#062f42','#042231','#02161f'];
+function initMap(){
+  map=L.map('map').setView([state.lat,state.lon],13);
+  const base={
+    'Carta':L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd',attribution:'© OpenStreetMap, © CARTO'}),
+    'Satellite':L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,attribution:'Immagini © Esri'}),
+    'OpenStreetMap':L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'})
+  };
+  base['Carta'].addTo(map);
+  isoLayer=L.layerGroup().addTo(map);spotLayer=L.layerGroup().addTo(map);structLayer=L.layerGroup().addTo(map);
+  const over={
+    'Isobate calcolate':isoLayer,'Spot consigliati':spotLayer,'Moli, dighe, foci, relitti':structLayer,
+    'Batimetria a colori (EMODnet)':L.tileLayer.wms('https://ows.emodnet-bathymetry.eu/wms',{layers:'emodnet:mean_multicolour',format:'image/png',transparent:true,opacity:.55,attribution:'EMODnet Bathymetry'}),
+    'Segnalamenti (OpenSeaMap)':L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenSeaMap'})
+  };
+  L.control.layers(base,over,{collapsed:true}).addTo(map);
+  L.control.scale({imperial:false}).addTo(map);
+  refMarker=L.marker([state.lat,state.lon],{draggable:true,zIndexOffset:1000,icon:L.divIcon({className:'ref',iconSize:[18,18],iconAnchor:[9,9]})}).addTo(map).bindTooltip('Punto di riferimento');
+  areaRect=L.rectangle([[0,0],[0,0]],{color:'#0e2a3b',weight:1.5,dashArray:'6 5',fill:false,interactive:false}).addTo(map);
+  refMarker.on('dragend',()=>{const p=refMarker.getLatLng();setPoint(p.lat,p.lng,false)});
+  map.on('click',e=>setPoint(e.latlng.lat,e.latlng.lng,false));
+}
+function drawMap(spots){
+  const d=data;isoLayer.clearLayers();spotLayer.clearLayers();structLayer.clearLayers();
+  if(d.grid){
+    const vals=d.grid.dep.flat().filter(v=>!isNaN(v)),mx=Math.max(...vals);
+    LEVELS.forEach((lv,k)=>{
+      if(lv>mx)return;const segs=isolines(d.grid,lv);if(!segs.length)return;
+      L.polyline(segs,{color:ISOCOL[k],weight:lv%10===0?2.2:1.4,opacity:.9}).bindTooltip('Isobata '+lv+' m',{sticky:true}).addTo(isoLayer);
+      const m=segs[segs.length>>1][0];
+      L.marker(m,{interactive:false,icon:L.divIcon({className:'isol',html:lv+' m',iconSize:null})}).addTo(isoLayer);
+    });
+  }
+  for(const s of d.structs)L.circleMarker([s.lat,s.lon],{radius:4,color:'#0e2a3b',weight:1.5,fillColor:'#fff',fillOpacity:1}).bindTooltip(STRUCT_LABEL[s.type]+(s.name?' · '+s.name:'')).addTo(structLayer);
+  spots.forEach((s,k)=>{
+    s.marker=L.marker([s.la,s.lo],{icon:L.divIcon({className:'pin',html:String(k+1),iconSize:[28,28],iconAnchor:[14,14]})})
+      .bindPopup(`<b>Spot ${k+1} · ${SPECIES[state.sp].name}</b><br>${s.why.map(esc).join('<br>')}<br><small>${coord(s.la,s.lo)}</small>`).addTo(spotLayer);
+  });
+}
+
+/* ---------- Rendering ---------- */
+function render(){
+  const d=data;if(!d)return;
+  const S=SPECIES[state.sp],H=buildHours(d,state.sp),spots=findSpots(d,state.sp,state.mode);
+  d.H=H;d.spots=spots;drawMap(spots);
+  const now=H[0],best=windows(H)[0];
+  let refDep=null;
+  if(d.grid){const c=(N-1)/2,v=d.grid.dep[c][c];if(!isNaN(v))refDep=v}
+  const missing=[];if(!d.grid)missing.push('batimetria');if(!d.met||!d.met.hasM)missing.push('dati del mare');if(!d.met||!d.met.hasF)missing.push('meteo');
+  setStatus(missing.length?'Non disponibili per questo punto: '+missing.join(', ')+'. Controlla la connessione o sposta il punto in mare aperto.':'',true);
+  $('#sum').innerHTML=`<h2>${S.name}${S.alt?' ('+S.alt+')':''} · ${state.mode==='riva'?'da riva':'dalla barca'}</h2>
+    <p>${state.example?'<span class="pill warn">Esempio: Chioggia</span> ':''}Punto ${coord(d.lat,d.lon)}${refDep==null?'':refDep>0.2?', fondale '+n1(refDep)+' m':', a terra'}.
+    ${spots.length?`${spots.length} spot nel raggio di ${kmLabel(d.R)}.`:''}
+    ${best?`Prossima finestra buona: <b>${dayName(H[best.a].t)} ${hh(H[best.a].t)}–${hh(H[best.b].t+36e5)}</b>.`:''}</p>
+    <p class="note">Attività adesso <b>${now.score}/100</b>${now.risk?' · <span class="pill warn">mare o vento impegnativi</span>':''}${S.months.includes(loc(now.t).getUTCMonth()+1)?' · <span class="pill">in stagione</span>':' · fuori dal periodo migliore'}</p>`;
+  renderSpots(spots,S);renderAct(H,S);renderMare(H,d);renderGuide(S,now);
+}
+function renderSpots(spots,S){
+  const d=data,p=$('#p-spot');
+  if(!d.grid){p.innerHTML='<div class="card">La batimetria non è arrivata, quindi non posso calcolare gli spot. EMODnet copre solo i mari europei; se sei in zona coperta riprova tra poco. Meteo, maree e attività restano validi.</div>';return}
+  if(!spots.length){p.innerHTML=`<div class="card">Nel raggio scelto non trovo fondali adatti: ${S.name.toLowerCase()} si cerca tra ${S.depth[1]} e ${S.depth[2]} m${state.mode==='riva'?' e da riva considero solo l\'acqua raggiungibile da terra':''}. Allarga il raggio, sposta il punto o cambia modalità.</div>`;return}
+  p.innerHTML=spots.map((s,k)=>`<button class="card spot" type="button" data-k="${k}">
+    <span class="num">${k+1}</span>
+    <span><b>Spot ${k+1}</b><ul>${s.why.map(w=>'<li>'+esc(w)+'</li>').join('')}</ul>
+    <small>${kmLabel(s.dRef)} verso ${card(s.brg)} (${n0(s.brg)}°) · ${coord(s.la,s.lo)}</small></span>
+    <span class="score">${s.pts}<span>idoneità</span></span></button>`).join('')+
+    `<p class="note">Tocca uno spot per vederlo sulla mappa. L'idoneità pesa profondità, pendenza del fondale, vicinanza a strutture e a costa per questa specie.${d.structs.length?'':' Strutture da OpenStreetMap non disponibili: gli spot usano solo il fondale.'}</p>`;
+  p.querySelectorAll('.spot').forEach(b=>b.onclick=()=>{const s=spots[+b.dataset.k];map.setView([s.la,s.lo],Math.max(map.getZoom(),15));s.marker.openPopup();$('#map').scrollIntoView({behavior:'smooth',block:'start'})});
+}
+function hourInfo(h){
+  const p=[`<b>${dayName(h.t)} ${hh(h.t)}</b> · attività <b>${h.score}/100</b>`,`luce: ${h.light}`];
+  if(h.wind!=null)p.push(`vento ${n0(h.wind)} kn ${card(h.wdir)}`);
+  if(h.wave!=null)p.push(`onda ${n1(h.wave)} m`);
+  if(h.sst!=null)p.push(`acqua ${n1(h.sst)} °C`);
+  if(h.tide!=null)p.push(h.tide>=.65?'marea in movimento':h.tide<=.25?'marea ferma':'marea lenta');
+  if(h.sol>=.6)p.push('periodo solunare');
+  if(h.risk)p.push('<span class="pill warn">condizioni impegnative</span>');
+  return p.join(' · ');
+}
+function renderAct(H,S){
+  const p=$('#p-att'),W=windows(H),mx=Math.max(...H.map(h=>h.score));
+  const cls=h=>h.score>=Math.max(.85*mx,mx-12)?'hi':h.score>=.65*mx?'mid':'';
+  p.innerHTML=`<div class="card"><h3>Finestre migliori nelle prossime 48 ore</h3>
+    ${W.map(w=>`<div class="win"><span><b>${dayName(H[w.a].t)} ${hh(H[w.a].t)}–${hh(H[w.b].t+36e5)}</b><br><small class="note">${[...w.why].join(', ')||'condizioni nella media'}</small></span><span>${w.risk?'<span class="pill warn">attenzione al mare</span>':'<span class="pill">'+Math.round(w.avg)+'/100</span>'}</span></div>`).join('')}</div>
+    <div class="card"><h3>Attività ora per ora</h3>
+    <div class="scroll"><div class="bars">${H.map((h,i)=>`<button type="button" class="bar ${cls(h)}${h.risk?' risk':''}${i===state.selHour?' sel':''}" style="height:${Math.max(6,h.score)}%" data-i="${i}" aria-label="${dayName(h.t)} ${hh(h.t)}, attività ${h.score} su 100"></button>`).join('')}</div>
+    <div class="axis">${H.map((h,i)=>{const hr=loc(h.t).getUTCHours();return `<span>${i===0||hr===0?dayName(h.t):hr%3===0?hr:''}</span>`}).join('')}</div></div>
+    <p id="hinfo" style="margin:8px 0 6px">${hourInfo(H[state.selHour]||H[0])}</p>
+    <div class="legend"><span><i style="background:var(--accent)"></i>ore migliori</span><span><i style="background:var(--sea)"></i>buone</span><span><i style="background:#a9c3cd"></i>scarse</span><span><i style="background:var(--warn)"></i>vento da 18 kn o onda da 1,5 m</span></div></div>
+    <div class="card"><h3>Luna e periodi solunari</h3>
+    <p style="margin:0 0 6px">${PHASES[Math.round(H[0].ph*8)%8]}, illuminata al ${Math.round(SunCalc.getMoonIllumination(new Date(H[0].t)).fraction*100)}%.</p>
+    ${data.sol.filter(e=>e.t>H[0].t-36e5&&e.t<H[0].t+30*36e5).map(e=>`<div class="win"><span>${e.label}</span><span><b>${dayName(e.t)} ${hh(e.t)}</b> · ${e.major?'maggiore, ±1 h':'minore, ±30 min'}</span></div>`).join('')}
+    <p class="note">Il punteggio pesa luce (30%), stato del mare (20%), periodi solunari (20%), movimento di marea (15%) e temperatura dell'acqua (15%) secondo le abitudini di ${S.name.toLowerCase()}. I periodi solunari sono una tradizione dei pescatori, non una certezza: usali come indicazione.</p></div>`;
+  p.querySelectorAll('.bar').forEach(b=>b.onclick=()=>{state.selHour=+b.dataset.i;p.querySelectorAll('.bar').forEach(x=>x.classList.toggle('sel',x===b));$('#hinfo').innerHTML=hourInfo(H[state.selHour])});
+}
+function tideSvg(H){
+  const pts=H.filter(h=>h.level!=null);if(pts.length<6)return '';
+  const w=560,ht=130,pad=22,mn=Math.min(...pts.map(h=>h.level)),mx=Math.max(...pts.map(h=>h.level)),rg=mx-mn||1,t0=pts[0].t,t1=pts[pts.length-1].t;
+  const x=t=>pad+(t-t0)/(t1-t0)*(w-2*pad),y=v=>ht-pad-(v-mn)/rg*(ht-2*pad-8);
+  const line=pts.map((h,i)=>(i?'L':'M')+x(h.t).toFixed(1)+' '+y(h.level).toFixed(1)).join(' ');
+  const ex=tideExtremes(H).map(e=>`<circle cx="${x(e.t).toFixed(1)}" cy="${y(e.v).toFixed(1)}" r="3.5" fill="#e8590c"/><text x="${x(e.t).toFixed(1)}" y="${(y(e.v)+(e.hi?-8:16)).toFixed(1)}" text-anchor="middle">${hh(e.t)} · ${e.v>=0?'+':''}${e.v.toFixed(2).replace('.',',')} m</text>`).join('');
+  const days=pts.filter(h=>loc(h.t).getUTCHours()===0).map(h=>`<line x1="${x(h.t)}" x2="${x(h.t)}" y1="6" y2="${ht-pad}" stroke="#cdd8dd"/><text x="${x(h.t)+3}" y="${ht-6}">${dayName(h.t)}</text>`).join('');
+  return `<div class="scroll"><svg viewBox="0 0 ${w} ${ht}" width="${w}" height="${ht}" role="img" aria-label="Andamento del livello del mare"><path d="${line} L${x(t1)} ${ht-pad} L${x(t0)} ${ht-pad} Z" fill="#0f6e84" opacity=".13"/><path d="${line}" fill="none" stroke="#0f6e84" stroke-width="2"/>${days}${ex}<text x="${pad}" y="${ht-6}">adesso</text></svg></div>`;
+}
+function renderMare(H,d){
+  const p=$('#p-mare'),n=H[0];
+  if(!d.met){p.innerHTML='<div class="card">Meteo e dati del mare non sono arrivati. Controlla la connessione e tocca di nuovo la mappa.</div>';return}
+  const tr=n.pres!=null&&H[3]&&H[3].pres!=null?H[3].pres-n.pres:null;
+  const sun=SunCalc.getTimes(new Date(n.t+6*36e5),d.lat,d.lon),ok=x=>x&&!isNaN(x)?hh(x.getTime()):'n.d.';
+  const tile=(l,v,s)=>`<div class="tile"><span>${l}</span><b>${v}</b><i>${s||'&nbsp;'}</i></div>`;
+  const ex=tideExtremes(H).slice(0,6);
+  p.innerHTML=`<div class="tiles">
+    ${tile('Vento',n0(n.wind,' kn'),n.wind==null?'':'da '+card(n.wdir)+', raffiche '+n0(n.gust,' kn'))}
+    ${tile('Onda',n1(n.wave,' m'),n.wave==null?'':'periodo '+n0(n.waveper,' s')+', da '+card(n.wavedir))}
+    ${tile('Acqua',n1(n.sst,' °C'),'in superficie')}
+    ${tile('Corrente',n1(n.cur,' kn'),n.cur==null?'':'verso '+card(n.curdir))}
+    ${tile('Aria',n0(n.air,' °C'),n.cloud==null?'':'nuvole '+n0(n.cloud,'%')+(n.rain?', pioggia '+n1(n.rain,' mm'):''))}
+    ${tile('Pressione',n0(n.pres,' hPa'),tr==null?'':tr>1?'in aumento':tr<-1?'in calo':'stabile')}
+    ${tile('Sole',ok(sun.sunrise)+' – '+ok(sun.sunset),'luce da '+ok(sun.dawn)+' a '+ok(sun.dusk))}
+    ${tile('Luna',Math.round(SunCalc.getMoonIllumination(new Date(n.t)).fraction*100)+'%',PHASES[Math.round(n.ph*8)%8])}
+  </div>
+  <div class="card"><h3>Marea e livello del mare</h3>${tideSvg(H)||'<p>Livello del mare non disponibile per questo punto.</p>'}
+    ${ex.length?'<p style="margin:6px 0 0">'+ex.map(e=>`${e.hi?'Alta':'Bassa'} <b>${dayName(e.t)} ${hh(e.t)}</b>`).join(' · ')+'</p>':''}
+    <p class="note">Livello rispetto al medio mare, marea più effetto di vento e pressione. Modello a 8 km: indicativo, non per la navigazione.</p></div>
+  <div class="card"><h3>Prossime 48 ore</h3><div class="scroll"><table><thead><tr><th>Ora</th><th>Vento kn</th><th>Raffica</th><th>Onda m</th><th>Acqua °C</th><th>Pioggia mm</th><th>hPa</th></tr></thead><tbody>
+    ${H.filter((h,i)=>i%3===0).map(h=>`<tr><td>${dayName(h.t)} ${hh(h.t)}</td><td>${n0(h.wind)} ${card(h.wdir)}</td><td>${n0(h.gust)}</td><td>${n1(h.wave)}</td><td>${n1(h.sst)}</td><td>${n1(h.rain)}</td><td>${n0(h.pres)}</td></tr>`).join('')}
+  </tbody></table></div></div>`;
+}
+function renderGuide(S,now){
+  const key=now.light==='notte'?'buio':(now.wave!=null&&now.wave>=.6)||(now.rain!=null&&now.rain>=1)?'torbida':'limpida';
+  const lab={limpida:'acqua limpida e mare calmo',torbida:'acqua velata o mare mosso',buio:'buio'};
+  $('#p-esche').innerHTML=`<div class="card now"><h3>Colore consigliato adesso</h3><p style="margin:0">Condizioni stimate: <b>${lab[key]}</b>${now.cloud!=null&&now.cloud>70&&key!=='buio'?', cielo coperto':''}. ${esc(S.colori[key])}</p></div>
+  <div class="card guide"><h3>${S.name}: come pescarlo</h3><dl>
+    <dt>Dove cercarlo</dt><dd>${esc(S.dove)}</dd>
+    <dt>Quando</dt><dd>${esc(S.quando)}</dd>
+    <dt>Esche</dt><dd><ul>${S.esche.map(e=>'<li>'+esc(e)+'</li>').join('')}</ul></dd>
+    <dt>Colori</dt><dd><ul><li><b>Acqua limpida:</b> ${esc(S.colori.limpida)}</li><li><b>Acqua velata o mare mosso:</b> ${esc(S.colori.torbida)}</li><li><b>Buio:</b> ${esc(S.colori.buio)}</li></ul></dd>
+    <dt>Come comportarsi</dt><dd><ul>${S.tecnica.map(e=>'<li>'+esc(e)+'</li>').join('')}</ul></dd>
+    <dt>Attrezzatura</dt><dd>${esc(S.attrezzatura)}</dd>
+    ${S.taglia?'<dt>Regole</dt><dd>'+esc(S.taglia)+' Controlla comunque le norme in vigore e le ordinanze locali.</dd>':''}
+  </dl></div>`;
+}
+
+/* ---------- Controlli ---------- */
+async function analyze(){
+  const run=++state.run;save();
+  const {lat,lon,R}=state,dLa=R/MLAT,dLo=R/mlon(lat);
+  refMarker.setLatLng([lat,lon]);areaRect.setBounds([[lat-dLa,lon-dLo],[lat+dLa,lon+dLo]]);
+  setStatus('Carico batimetria, meteo, mare e strutture…');
+  const [grid,met,st]=await Promise.all([loadGrid(lat,lon,R,run).catch(()=>null),loadMeteo(lat,lon).catch(()=>null),loadStructs(lat,lon,R).catch(()=>[])]);
+  if(run!==state.run)return;
+  if(met)tzOff=met.off;
+  data={lat,lon,R,grid,met,structs:filterStructs(st,grid),sol:solunar(lat,lon,Date.now())};
+  state.selHour=0;render();
+}
+let deb=null;
+function setPoint(lat,lon,fly){
+  state.lat=lat;state.lon=lon;state.example=false;refMarker.setLatLng([lat,lon]);
+  if(fly)map.setView([lat,lon],13);
+  if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+  clearTimeout(deb);deb=setTimeout(analyze,450);
+}
+function syncControls(){
+  document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c.dataset.sp===state.sp));
+  $('#mBarca').setAttribute('aria-pressed',state.mode==='barca');$('#mRiva').setAttribute('aria-pressed',state.mode==='riva');
+  $('#radius').value=String(state.R);
+  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.t===state.tab));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id==='p-'+state.tab));
+}
+function init(){
+  if(!window.L||!window.SunCalc){$('#setpt').style.display='none';$('#sum').innerHTML='<h2>Qui internet è bloccato</h2><p>Se stai guardando l\'anteprima dentro l\'app di Claude, la pagina non può scaricare mappe e dati. Salva il file e aprilo con Safari o Chrome, oppure pubblicalo su GitHub Pages. Se sei già nel browser, controlla la connessione e ricarica.</p>';return}
+  $('#chips').innerHTML=Object.entries(SPECIES).map(([k,s])=>`<button type="button" class="chip" data-sp="${k}">${s.name}</button>`).join('');
+  document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{state.sp=c.dataset.sp;save();syncControls();render()});
+  $('#mBarca').onclick=()=>{state.mode='barca';save();syncControls();render()};
+  $('#mRiva').onclick=()=>{state.mode='riva';save();syncControls();render()};
+  $('#radius').onchange=e=>{state.R=+e.target.value;analyze()};
+  document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{state.tab=b.dataset.t;save();syncControls()});
+  const search=async()=>{
+    const q=$('#place').value.trim();if(!q)return;setStatus('Cerco '+q+'…');
+    try{
+      const j=await (await fetch('https://geocoding-api.open-meteo.com/v1/search?count=1&language=it&name='+encodeURIComponent(q))).json();
+      if(j.results&&j.results[0])setPoint(j.results[0].latitude,j.results[0].longitude,true);
+      else setStatus('Nessuna località trovata per "'+q+'". Prova con il nome del comune.',true);
+    }catch(e){setStatus('Ricerca non riuscita: controlla la connessione.',true)}
+  };
+  $('#setpt').onclick=()=>{const c=map.getCenter();setPoint(c.lat,c.lng,false)};
+  $('#go').onclick=search;$('#place').onkeydown=e=>{if(e.key==='Enter')search()};
+  $('#gps').onclick=()=>{
+    if(!navigator.geolocation){setStatus('Questo browser non fornisce la posizione. Tocca la mappa.',true);return}
+    setStatus('Cerco la tua posizione…');
+    navigator.geolocation.getCurrentPosition(p=>setPoint(p.coords.latitude,p.coords.longitude,true),
+      ()=>setStatus('Posizione non disponibile: dai il permesso al browser oppure tocca la mappa. Da file locale alcuni browser la bloccano.',true),{enableHighAccuracy:true,timeout:15000});
+  };
+  const fit=()=>document.documentElement.style.setProperty('--hh',$('#hd').offsetHeight+'px');
+  fit();addEventListener('resize',fit);
+  initMap();syncControls();analyze();
+}
+init();
+</script>
+</body>
+</html>
