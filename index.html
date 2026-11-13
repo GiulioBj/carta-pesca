@@ -33,7 +33,7 @@ button{cursor:pointer}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 header{background:var(--bar);color:#fff;padding:calc(8px + env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) 8px max(10px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:6px}
 html{background:var(--bar)}
-:root.standalone header{padding-top:calc(34px + env(safe-area-inset-top))}
+:root.standalone header{padding-top:calc(16px + env(safe-area-inset-top))}
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .top h1{font-size:18px;text-transform:uppercase;white-space:nowrap}
 .top span{display:flex;gap:6px}
@@ -106,14 +106,14 @@ body.full .leaflet-top{top:env(safe-area-inset-top)}
 #trackbar b{font:700 19px var(--display);font-variant-numeric:tabular-nums}
 #trackbar span{flex:1;font-size:14px}
 #trackbar button{background:#fff;color:#0e2a3b;border:0;border-radius:8px;min-height:40px;padding:0 12px;font-weight:600}
-main{padding:12px 12px calc(84px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px;min-width:0}
+main{padding:10px 12px calc(70px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px;min-width:0}
 #status{font-size:13px;color:var(--muted);min-height:1.4em}
 #status.err{color:var(--warn);font-weight:500}
 .sum{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--accent);border-radius:10px;padding:12px 14px}
 .sum h2{font-size:22px}
 .sum p{margin:4px 0 0}
-.tabs{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:1000;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -2px 10px rgba(14,42,59,.12)}
-.tabs button{flex:1;min-width:0;min-height:56px;background:none;border:0;border-top:3px solid transparent;padding:4px 2px;font-family:var(--display);font-size:16px;font-weight:600;color:var(--muted)}
+.tabs{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:1000;background:var(--card);border-top:1px solid var(--line);padding-bottom:max(2px,calc(env(safe-area-inset-bottom) - 14px));box-shadow:0 -2px 10px rgba(14,42,59,.12)}
+.tabs button{flex:1;min-width:0;min-height:48px;background:none;border:0;border-top:3px solid transparent;padding:4px 2px;font-family:var(--display);font-size:16px;font-weight:600;color:var(--muted)}
 .tabs button[aria-selected="true"]{color:var(--ink);border-top-color:var(--accent)}
 @media(min-width:900px){
   .wrap{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(400px,.85fr);height:calc(100% - var(--hh,150px))}
@@ -208,7 +208,7 @@ footer a{color:var(--sea)}
 </head>
 <body>
 <header id="hd">
-  <div class="top"><h1>Carta di pesca <small style="font:400 11px var(--body);opacity:.7;text-transform:none">v10</small></h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
+  <div class="top"><h1>Carta di pesca <small style="font:400 11px var(--body);opacity:.7;text-transform:none">v11</small></h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
   <div class="ctl"><select id="spsel" aria-label="Specie da cercare"></select></div>
   <div class="ctl">
     <div class="seg" role="group" aria-label="Da dove peschi">
@@ -612,15 +612,39 @@ function deriveGrid(g){
   const open=water.map((r,i)=>r.map((v,j)=>{if(!v)return false;let n=0;for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const y=i+a,x=j+b;if((a||b)&&(y<0||x<0||y>=N||x>=N||water[y][x]))n++}return n>=5}));
   return Object.assign(g,{dep,water,open,dLand,nl,slope,sdep:null,_wm:null});
 }
+const symCode=s=>!s?null:/thunder/.test(s)?95:/snow/.test(s)?71:/sleet/.test(s)?67:/heavyrain/.test(s)?(/showers/.test(s)?82:65):/lightrain/.test(s)?(/showers/.test(s)?80:61):/rain/.test(s)?(/showers/.test(s)?81:63):/fog/.test(s)?45:/^cloudy/.test(s)?3:/partlycloudy/.test(s)?2:/fair/.test(s)?1:/clearsky/.test(s)?0:3;
+// Meteo di riserva (servizio meteorologico norvegese) quando quello principale non risponde
+async function metNo(lat,lon,times,off){
+  const r=await fetch(`https://api.met.no/weatherapi/locationforecast/2.0/complete?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}`);
+  if(!r.ok)throw new Error('met');
+  const ts=(await r.json()).properties.timeseries.map(x=>({t:Date.parse(x.time)/1000,d:x.data.instant.details,n1:x.data.next_1_hours,n6:x.data.next_6_hours}));
+  if(ts.length<2)throw new Error('met');
+  if(!times){const t0=Math.floor(Date.now()/36e5)*3600;times=Array.from({length:168},(_,i)=>t0+i*3600)}
+  const H={time:times,temperature_2m:[],precipitation:[],precipitation_probability:[],weather_code:[],cloud_cover:[],pressure_msl:[],wind_speed_10m:[],wind_direction_10m:[],wind_gusts_10m:[]};
+  let k=0;
+  for(const t of times){
+    if(t<ts[0].t-1800||t>ts[ts.length-1].t){for(const key in H)if(key!=='time')H[key].push(null);continue}
+    while(k<ts.length-2&&ts[k+1].t<=t)k++;
+    const a=ts[k],b=ts[k+1],f=Math.max(0,Math.min(1,(t-a.t)/(b.t-a.t))),mix=p=>a.d[p]==null?null:b.d[p]==null?a.d[p]:a.d[p]+(b.d[p]-a.d[p])*f;
+    const nx=a.n1||a.n6,span=a.n1?1:6,det=nx&&nx.details||{},ws=mix('wind_speed'),wg=mix('wind_speed_of_gust');
+    H.temperature_2m.push(mix('air_temperature'));H.cloud_cover.push(mix('cloud_area_fraction'));H.pressure_msl.push(mix('air_pressure_at_sea_level'));
+    H.wind_speed_10m.push(ws==null?null:ws*1.94384);H.wind_gusts_10m.push(wg==null?null:wg*1.94384);H.wind_direction_10m.push(a.d.wind_from_direction==null?null:a.d.wind_from_direction);
+    H.precipitation.push(det.precipitation_amount!=null?det.precipitation_amount/span:null);
+    H.precipitation_probability.push(det.probability_of_precipitation!=null?det.probability_of_precipitation:null);
+    H.weather_code.push(symCode(nx&&nx.summary?nx.summary.symbol_code:''));
+  }
+  return {utc_offset_seconds:off,hourly:H};
+}
 async function loadMeteo(lat,lon){
   const q=`latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&timeformat=unixtime&timezone=auto&forecast_days=7&past_days=2`;
   const js=u=>fetch(u).then(r=>r.ok?r.json():Promise.reject(new Error('http')));
   const fu='https://api.open-meteo.com/v1/forecast?'+q+'&wind_speed_unit=kn&hourly=temperature_2m,precipitation,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m';
   const mu='https://marine-api.open-meteo.com/v1/marine?'+q+'&cell_selection=sea&hourly=wave_height,wave_direction,wave_period';
-  const [F,M]=await Promise.all([
+  let [F,M]=await Promise.all([
     js(fu+',precipitation_probability,weather_code').catch(()=>js(fu).catch(()=>new Promise(r=>setTimeout(r,1500)).then(()=>js(fu)).catch(()=>null))),
     js(mu+',sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction').catch(()=>js(mu).catch(()=>null))
   ]);
+  if(!F){try{F=await metNo(lat,lon,M&&M.hourly?M.hourly.time:null,M?M.utc_offset_seconds||0:tzOff)}catch(e){F=null}}
   const src=F||M;if(!src||!src.hourly||!src.hourly.time)return null;
   const off=src.utc_offset_seconds||0,times=src.hourly.time,now=Date.now()/1000;
   let s=times.findIndex(t=>t+3600>now);if(s<0)s=0;
@@ -1127,10 +1151,11 @@ function drawHeat(){
   heatLayer.clearLayers();const d=data,g=d.grid;if(!g||!d.heat.length)return;
   const mx=d.heatMax||1,T=g.water.map(r=>r.map(()=>0));
   for(const c of d.heat)T[c.i][c.j]=Math.max(0,(c.score/mx-.6)/.4);   // solo il 40% alto del punteggio
-  const U=upsample(T,ZQ),W=waterMask(g);
+  const soft=A=>A.map((r,i)=>r.map((v,j)=>{if(!g.water[i][j])return 0;let s=v*2,n=2;for(const [a,b] of [[1,0],[-1,0],[0,1],[0,-1]]){const y=i+a,x=j+b;if(y>=0&&x>=0&&y<N&&x<N&&g.water[y][x]){s+=A[y][x];n++}}return s/n}));
+  const U=upsample(soft(state.mode==='riva'?soft(T):T),ZQ),W=waterMask(g);
   overlayImage(heatLayer,'heat',g,D=>{
     for(let k=0;k<U.length;k++){
-      const t=U[k],al=(.25+.55*t)*Math.min(1,t*5)*W[k];if(al<.01)continue;
+      const t=Math.min(1,U[k]),al=(.22+.5*t)*Math.min(1,t*4)*W[k];if(al<.01)continue;
       const q=k*4;D[q]=255-Math.round(31*t);D[q+1]=Math.round(179*(1-t));D[q+2]=Math.round(236-82*t);D[q+3]=Math.round(255*al);
     }
   });
@@ -1190,7 +1215,7 @@ function render(){
   let refDep=null;
   if(d.grid){const c=(N-1)/2,v=d.grid.dep[c][c];if(!isNaN(v))refDep=v}
   d.refDep=refDep;
-  const missing=[];if(!d.grid)missing.push('batimetria');if(!d.met||!d.met.hasM)missing.push('dati del mare');if(!d.met||!d.met.hasF)missing.push('meteo');
+  const missing=[];if(!d.grid)missing.push('batimetria');if(!d.met||!d.met.hasM)missing.push('dati del mare');if(!d.met||!d.met.hasF)missing.push('meteo (il servizio può aver raggiunto il limite di richieste: di solito torna entro un\'ora)');
   setStatus(d.cached?'Senza rete: mostro i dati salvati il '+new Date(d.cached).toLocaleString('it-IT',{dateStyle:'short',timeStyle:'short'})+'.':missing.length?'Non disponibili per questo punto: '+missing.join(', ')+'. Controlla la connessione o sposta il target in mare.':d.pending?'Carico canali, barene e strutture…':'Tocca la mappa per i dati di un punto; da lì puoi spostare il target.',!!(d.cached||missing.length));
   const adv=advise(state.sp,now,spots[0]?spots[0].dep:refDep);
   $('#sum').innerHTML=`<h2>${S.name}${S.alt?' ('+S.alt+')':''} · ${state.mode==='riva'?'da riva':'dalla barca'}</h2>
