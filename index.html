@@ -185,7 +185,8 @@ th{font-weight:600;color:var(--muted);font-size:12.5px}
 .guide dd{margin:0}
 svg text{font:11px var(--body);fill:var(--muted)}
 .pin{background:var(--accent);color:#fff;border:2px solid #fff;border-radius:50%;font:700 14px/24px var(--display);text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.45)}
-.ref{background:#0e2a3b;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 2px #0e2a3b,0 1px 5px rgba(0,0,0,.5)}
+.ref{background:radial-gradient(circle,#e8590c 0 28%,#fff 30% 52%,#0e2a3b 54%);border:2px solid #fff;border-radius:50%;box-shadow:0 1px 6px rgba(0,0,0,.6)}
+.reflab{font:700 11px var(--body);color:#fff;background:#0e2a3b;border-radius:4px;padding:1px 5px;white-space:nowrap;transform:translate(-50%,16px);display:inline-block}
 .fav{background:#f2c200;border:2px solid #0e2a3b;border-radius:4px;transform:rotate(45deg)}
 .logm{background:#1f8a5b;border:2px solid #fff;border-radius:50%}
 .me{background:#1a73e8;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 6px rgba(26,115,232,.25)}
@@ -207,7 +208,7 @@ footer a{color:var(--sea)}
 </head>
 <body>
 <header id="hd">
-  <div class="top"><h1>Carta di pesca</h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
+  <div class="top"><h1>Carta di pesca <small style="font:400 11px var(--body);opacity:.7;text-transform:none">v10</small></h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
   <div class="ctl"><select id="spsel" aria-label="Specie da cercare"></select></div>
   <div class="ctl">
     <div class="seg" role="group" aria-label="Da dove peschi">
@@ -226,9 +227,7 @@ footer a{color:var(--sea)}
 <div class="wrap">
   <div class="mapbox">
     <div id="map"></div>
-    <div class="cross" aria-hidden="true"></div>
     <div id="trackbar" hidden><span><b id="trackbig"></b><br><span id="tracktxt"></span></span><button id="trackstop" type="button">Stop</button></div>
-    <button id="setpt" type="button">Imposta target qui</button>
     <button id="fs" type="button" aria-pressed="false">Schermo intero</button>
     <div id="mapwhen"><select id="mapday" aria-label="Giorno mostrato sulla mappa"></select><select id="maphour" aria-label="Ora mostrata sulla mappa"></select><span id="mapscore"></span></div>
     <div id="legend">
@@ -242,7 +241,8 @@ footer a{color:var(--sea)}
         <span><i class="key" style="background:#b5651d;opacity:.6"></i>barena, velma, secca</span>
         <span><i class="key rd" style="background:#e8590c"></i>spot consigliato</span>
         <span><i class="key rd" style="background:#fff;border:1.5px solid #0e2a3b"></i>molo, diga, foce, relitto</span>
-        <span><i class="key rd" style="background:#0e2a3b"></i>tuo punto target</span>
+        <span><i class="key rd" style="background:radial-gradient(circle,#e8590c 0 30%,#fff 32% 55%,#0e2a3b 57%)"></i>target (zona analizzata)</span>
+        <span><i class="key rd" style="background:#fff;border:2px solid #0e2a3b"></i>punto toccato</span>
         <span><i class="key" style="background:#f2c200;border:1.5px solid #0e2a3b"></i>punto salvato</span>
         <span><i class="key rd" style="background:#1f8a5b"></i>cattura del diario</span>
       </div>
@@ -558,25 +558,37 @@ async function loadGrid(lat,lon,R,run){
   const lats=Array.from({length:N},(_,i)=>lat-dLa+2*dLa*i/(N-1));
   const lons=Array.from({length:N},(_,j)=>lon-dLo+2*dLo*j/(N-1));
   const z=lats.map(()=>new Array(N).fill(NaN));
-  let next=0,done=0,ok=0;
-  async function worker(){
-    while(next<N){
-      const i=next++;
+  let next=0,done=0;const okRow=new Array(N).fill(false);
+  async function row(i){
+    const g=`LINESTRING(${lons[0].toFixed(6)} ${lats[i].toFixed(6)},${lons[N-1].toFixed(6)} ${lats[i].toFixed(6)})`;
+    for(let t=0;t<3&&run===state.run;t++){
       try{
-        const g=`LINESTRING(${lons[0].toFixed(6)} ${lats[i].toFixed(6)},${lons[N-1].toFixed(6)} ${lats[i].toFixed(6)})`;
         const r=await fetch('https://rest.emodnet-bathymetry.eu/depth_profile?geom='+encodeURIComponent(g));
-        const a=await r.json();
+        const a=r.ok?await r.json():null;
         if(Array.isArray(a)&&a.length>1){
           for(let j=0;j<N;j++){const v=a[Math.round(j/(N-1)*(a.length-1))];z[i][j]=typeof v==='number'?v:NaN}
-          ok++;
+          okRow[i]=true;return;
         }
       }catch(e){}
-      done++;
-      if(run===state.run)setStatus(`Carico la batimetria: ${done} di ${N} profili…`);
+      await new Promise(r=>setTimeout(r,500*(t+1)));
     }
   }
-  await Promise.all(Array.from({length:6},worker));
-  if(!ok)return null;
+  async function worker(){
+    while(next<N){
+      const i=next++;await row(i);done++;
+      if(run===state.run)setStatus(`Carico i fondali: ${done} di ${N}…`);
+    }
+  }
+  await Promise.all(Array.from({length:4},worker));
+  if(!okRow.some(Boolean))return null;
+  for(let i=0;i<N;i++){                                    // una riga non arrivata si ricostruisce dalle vicine, così non restano strisce vuote
+    if(okRow[i])continue;
+    let lo=i-1,hi=i+1;while(lo>=0&&!okRow[lo])lo--;while(hi<N&&!okRow[hi])hi++;
+    for(let j=0;j<N;j++){
+      const a=lo>=0?z[lo][j]:NaN,b=hi<N?z[hi][j]:NaN;
+      z[i][j]=isNaN(a)?b:isNaN(b)?a:a+(b-a)*(i-lo)/(hi-lo);
+    }
+  }
   return deriveGrid({lats,lons,z,cell:2*R/(N-1)});
 }
 function deriveGrid(g){
@@ -598,7 +610,7 @@ function deriveGrid(g){
     return Math.hypot(gx,gy)*100;                           // metri di dislivello ogni 100 m
   }));
   const open=water.map((r,i)=>r.map((v,j)=>{if(!v)return false;let n=0;for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const y=i+a,x=j+b;if((a||b)&&(y<0||x<0||y>=N||x>=N||water[y][x]))n++}return n>=5}));
-  return Object.assign(g,{dep,water,open,dLand,nl,slope});
+  return Object.assign(g,{dep,water,open,dLand,nl,slope,sdep:null,_wm:null});
 }
 async function loadMeteo(lat,lon){
   const q=`latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&timeformat=unixtime&timezone=auto&forecast_days=7&past_days=2`;
@@ -665,17 +677,20 @@ function applyCoast(g,coast){
   const kx=mlon(g.lats[N>>1]),ky=MLAT,segs=[];
   for(const w of coast||[])for(let k=0;k<w.length-1;k++)segs.push([w[k][1]*kx,w[k][0]*ky,w[k+1][1]*kx,w[k+1][0]*ky]);
   if(segs.length<2||segs.length>80000)return 0;
-  let changed=0;const lim=(g.cell*.2)**2;
+  const lim=(g.cell*.2)**2,far=Math.max(250,g.cell*1.5)**2,hits=[];let water=0;
   for(let i=0;i<N;i++)for(let j=0;j<N;j++){
-    const v=g.z[i][j];if(isNaN(v)||v>=-.2||v<-3)continue;       // già terra, o canale profondo: non tocco
+    const v=g.z[i][j];if(isNaN(v)||v>=-.2)continue;water++;
+    if(v<-1.5)continue;                                      // acqua vera: non la tocco mai
     const px=g.lons[j]*kx,py=g.lats[i]*ky;let best=Infinity,side=0;
     for(const s of segs){
       const dx=s[2]-s[0],dy=s[3]-s[1],l2=dx*dx+dy*dy||1e-9,t=Math.max(0,Math.min(1,((px-s[0])*dx+(py-s[1])*dy)/l2)),qx=s[0]+t*dx-px,qy=s[1]+t*dy-py,dd=qx*qx+qy*qy;
       if(dd<best){best=dd;side=dx*(py-s[1])-dy*(px-s[0])}
     }
-    if(side>0&&best>lim){g.z[i][j]=1;changed++}
+    if(side>0&&best>lim&&best<far)hits.push([i,j]);
   }
-  return changed;
+  if(hits.length>water*.3)return 0;                          // se toglierebbe troppa acqua c'è qualcosa che non torna: lascio tutto com'è
+  for(const [i,j] of hits)g.z[i][j]=1;
+  return hits.length;
 }
 function filterStructs(st,g){
   if(!g)return st.filter(s=>!s.river);
@@ -1001,7 +1016,7 @@ function initMap(){
   const seaLayer=L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',{maxZoom:18,zIndex:6,attribution:'© OpenSeaMap'});
   LAY={heat:[heatLayer],nav:[navLayer],iso:[isoLayer],osm:[hazLayer,canalLayer],emod:[emodLayer],str:[structLayer],log:[logLayer],fav:[favLayer],spot:[spotLayer],sea:[seaLayer]};
   L.control.scale({imperial:false}).addTo(map);
-  refMarker=L.marker([state.lat,state.lon],{draggable:true,zIndexOffset:1000,icon:L.divIcon({className:'ref',iconSize:[18,18],iconAnchor:[9,9]})}).addTo(map).bindTooltip('Punto target');
+  refMarker=L.marker([state.lat,state.lon],{draggable:true,zIndexOffset:1000,icon:L.divIcon({className:'',html:'<div class="ref" style="width:26px;height:26px"></div><span class="reflab" style="position:absolute;left:13px;top:12px">TARGET</span>',iconSize:[26,26],iconAnchor:[13,13]})}).addTo(map);
   areaRect=L.rectangle([[0,0],[0,0]],{color:'#0e2a3b',weight:1.5,dashArray:'6 5',fill:false,interactive:false}).addTo(map);
   refMarker.on('dragend',()=>{const p=refMarker.getLatLng();setPoint(p.lat,p.lng,false)});
   map.on('click',e=>showInfo(e.latlng.lat,e.latlng.lng));
@@ -1033,7 +1048,7 @@ function pointInfo(la,lo){
   rows.push(`Dal punto target: ${kmLabel(dist(d.lat,d.lon,la,lo))} verso ${card(b)} (${n0(b)}°)${rt?'; '+routeTxt(rt):''}`);
   const el=document.createElement('div');el.className='pinfo';
   el.innerHTML=`<b>${state.selDay===0?'Oggi':dayName(h.t)}, ore ${hh(h.t)}</b>${rows.map(r=>'<div>'+r+'</div>').join('')}<small>${coord(la,lo)}</small>
-    <div class="acts"><button class="btn pri" type="button" data-pa="go">Portami lì</button><button class="btn" type="button" data-pa="set">Metti qui il target</button><a class="btn" data-pa="fav" href="${gmaps(la,lo)}" target="_blank" rel="noopener">Salva</a><a class="btn" href="${gmaps(la,lo)}" target="_blank" rel="noopener">Google Maps</a></div>`;
+    <div class="acts"><button class="btn pri" type="button" data-pa="set">Metti qui il target</button><button class="btn" type="button" data-pa="go">Portami lì</button><a class="btn" data-pa="fav" href="${gmaps(la,lo)}" target="_blank" rel="noopener">Salva</a><a class="btn" href="${gmaps(la,lo)}" target="_blank" rel="noopener">Google Maps</a></div>`;
   el.querySelector('[data-pa="go"]').onclick=()=>{closeInfo();track(la,lo,'Punto scelto')};
   el.querySelector('[data-pa="set"]').onclick=()=>{closeInfo();setPoint(la,lo,false)};
   el.querySelector('[data-pa="fav"]').onclick=ev=>{const a=ev.currentTarget;if(a.dataset.done)return;a.dataset.done='1';favs.push({id:Date.now(),name:`${S.name}${dep!=null?' · '+n1(dep)+' m':''} · ${new Date().toLocaleDateString('it-IT',{day:'numeric',month:'short'})}`,lat:la,lon:lo,sp:state.sp,dep});store.set('cartapesca_favs',favs);drawMine();renderDiario();a.textContent='Salvato'};
@@ -1042,7 +1057,7 @@ function pointInfo(la,lo){
 function showInfo(la,lo){
   if(!data||!data.H)return;
   infoLL=[la,lo];
-  if(!infoMark)infoMark=L.circleMarker(infoLL,{radius:9,color:'#fff',weight:3,fillColor:'#e8590c',fillOpacity:1,interactive:false}).addTo(map);else infoMark.setLatLng(infoLL);
+  if(!infoMark)infoMark=L.circleMarker(infoLL,{radius:8,color:'#0e2a3b',weight:3,fillColor:'#fff',fillOpacity:1,interactive:false}).addTo(map);else infoMark.setLatLng(infoLL);
   const b=$('#pbody');b.innerHTML='';b.appendChild(pointInfo(la,lo));$('#psheet').hidden=false;$('#psheet').scrollTop=0;
 }
 function drawStatic(){
@@ -1060,36 +1075,65 @@ function drawStatic(){
   }
   for(const s of d.structs)if(s.type!=='canale')L.circleMarker([s.lat,s.lon],{radius:4,color:'#0e2a3b',weight:1.5,fillColor:'#fff',fillOpacity:1}).bindTooltip(STRUCT_LABEL[s.type]+(s.name?' · '+s.name:'')).addTo(structLayer);
 }
+function upsample(vals,Z){
+  const M=N*Z,out=new Float32Array(M*M),cl=(v,a,b)=>v<a?a:v>b?b:v;
+  for(let Y=0;Y<M;Y++){
+    const gi=(N-1)-((Y+.5)/Z-.5),i0=cl(Math.floor(gi),0,N-1),i1=Math.min(N-1,i0+1),fi=cl(gi-i0,0,1);
+    for(let X=0;X<M;X++){
+      const gj=(X+.5)/Z-.5,j0=cl(Math.floor(gj),0,N-1),j1=Math.min(N-1,j0+1),fj=cl(gj-j0,0,1);
+      out[Y*M+X]=(vals[i0][j0]*(1-fj)+vals[i0][j1]*fj)*(1-fi)+(vals[i1][j0]*(1-fj)+vals[i1][j1]*fj)*fi;
+    }
+  }
+  return out;
+}
+const ZQ=6;
+function waterMask(g){
+  if(g._wm)return g._wm;
+  const m=upsample(g.water.map(r=>r.map(v=>v?1:0)),ZQ);
+  for(let k=0;k<m.length;k++)m[k]=Math.max(0,Math.min(1,(m[k]-.5)*2.2));   // bordo morbido che si ferma alla riva
+  return g._wm=m;
+}
+function overlayImage(layer,pane,g,paint){
+  const M=N*ZQ,cv=document.createElement('canvas');cv.width=cv.height=M;
+  let ctx=null;try{ctx=cv.getContext('2d')}catch(e){}
+  if(!ctx)return;
+  const im=ctx.createImageData(M,M);paint(im.data);ctx.putImageData(im,0,0);
+  const a=(g.lats[1]-g.lats[0])/2,b=(g.lons[1]-g.lons[0])/2;
+  L.imageOverlay(cv.toDataURL(),[[g.lats[0]-a,g.lons[0]-b],[g.lats[N-1]+a,g.lons[N-1]+b]],{pane,interactive:false}).addTo(layer);
+}
 function drawNav(h){
   navLayer.clearLayers();const g=data.grid;
   if(!g||state.mode!=='barca')return null;
-  const lvl=h.level==null?0:h.level,a=(g.lats[1]-g.lats[0])/2,b=(g.lons[1]-g.lons[0])/2;let red=0,amb=0,tot=0;
+  const lvl=h.level==null?0:h.level,S=g.water.map(r=>r.map(()=>0));let red=0,amb=0,tot=0;
   for(let i=0;i<N;i++)for(let j=0;j<N;j++){
     if(!g.open[i][j])continue;tot++;
-    const e=g.dep[i][j]+lvl,col=e<state.draft+.2?'#d62d20':e<state.draft+.7?'#f2a100':null;if(!col)continue;
-    if(col==='#d62d20')red++;else amb++;
-    L.rectangle([[g.lats[i]-a,g.lons[j]-b],[g.lats[i]+a,g.lons[j]+b]],{renderer:navRenderer,stroke:false,fillColor:col,fillOpacity:.26,interactive:false}).addTo(navLayer);
+    const e=g.dep[i][j]+lvl;
+    if(e<state.draft+.2){S[i][j]=2;red++}else if(e<state.draft+.7){S[i][j]=1;amb++}
+  }
+  if(red+amb){
+    const U=upsample(S,ZQ),W=waterMask(g);
+    overlayImage(navLayer,'nav',g,D=>{
+      for(let k=0;k<U.length;k++){
+        const s=U[k],al=.38*Math.max(0,Math.min(1,(s-.3)*3))*W[k];if(al<.01)continue;
+        const f=Math.max(0,Math.min(1,s-1)),q=k*4;
+        D[q]=Math.round(242-28*f);D[q+1]=Math.round(161-116*f);D[q+2]=Math.round(32*f);D[q+3]=Math.round(255*al);
+      }
+    });
   }
   return {red,amb,tot,lvl};
 }
 const HEATCOL=['#ffb3ec','#ff5fd0','#e0009a'];
 function drawHeat(){
   heatLayer.clearLayers();const d=data,g=d.grid;if(!g||!d.heat.length)return;
-  const mx=Math.max(...d.heat.map(c=>c.score)),a=(g.lats[1]-g.lats[0])/2,b=(g.lons[1]-g.lons[0])/2;
-  const cv=document.createElement('canvas');cv.width=N;cv.height=N;
-  let ctx=null;try{ctx=cv.getContext('2d')}catch(e){}
-  if(!ctx)return;
-  const im=ctx.createImageData(N,N);
-  for(const c of d.heat){
-    const t=(c.score/mx-.6)/.4;if(t<=0)continue;           // solo il 40% alto del punteggio
-    const k=((N-1-c.i)*N+c.j)*4;
-    im.data[k]=255-Math.round(31*t);im.data[k+1]=Math.round(179*(1-t));im.data[k+2]=Math.round(236-82*t);im.data[k+3]=Math.round(255*(.3+.5*t));
-  }
-  ctx.putImageData(im,0,0);
-  const Z=8,big=document.createElement('canvas');big.width=N*Z;big.height=N*Z;
-  const bx=big.getContext('2d');bx.imageSmoothingEnabled=true;bx.imageSmoothingQuality='high';bx.drawImage(cv,0,0,N*Z,N*Z);
-  for(let i=0;i<N;i++)for(let j=0;j<N;j++)if(!g.water[i][j])bx.clearRect(j*Z,(N-1-i)*Z,Z,Z);   // la terra resta pulita
-  L.imageOverlay(big.toDataURL(),[[g.lats[0]-a,g.lons[0]-b],[g.lats[N-1]+a,g.lons[N-1]+b]],{pane:'heat',interactive:false}).addTo(heatLayer);
+  const mx=d.heatMax||1,T=g.water.map(r=>r.map(()=>0));
+  for(const c of d.heat)T[c.i][c.j]=Math.max(0,(c.score/mx-.6)/.4);   // solo il 40% alto del punteggio
+  const U=upsample(T,ZQ),W=waterMask(g);
+  overlayImage(heatLayer,'heat',g,D=>{
+    for(let k=0;k<U.length;k++){
+      const t=U[k],al=(.25+.55*t)*Math.min(1,t*5)*W[k];if(al<.01)continue;
+      const q=k*4;D[q]=255-Math.round(31*t);D[q+1]=Math.round(179*(1-t));D[q+2]=Math.round(236-82*t);D[q+3]=Math.round(255*al);
+    }
+  });
 }
 function drawSpots(spots){
   spotLayer.clearLayers();
@@ -1147,7 +1191,7 @@ function render(){
   if(d.grid){const c=(N-1)/2,v=d.grid.dep[c][c];if(!isNaN(v))refDep=v}
   d.refDep=refDep;
   const missing=[];if(!d.grid)missing.push('batimetria');if(!d.met||!d.met.hasM)missing.push('dati del mare');if(!d.met||!d.met.hasF)missing.push('meteo');
-  setStatus(d.cached?'Senza rete: mostro i dati salvati il '+new Date(d.cached).toLocaleString('it-IT',{dateStyle:'short',timeStyle:'short'})+'.':missing.length?'Non disponibili per questo punto: '+missing.join(', ')+'. Controlla la connessione o sposta il punto in mare.':d.pending?'Carico canali, barene e strutture…':'',!!(d.cached||missing.length));
+  setStatus(d.cached?'Senza rete: mostro i dati salvati il '+new Date(d.cached).toLocaleString('it-IT',{dateStyle:'short',timeStyle:'short'})+'.':missing.length?'Non disponibili per questo punto: '+missing.join(', ')+'. Controlla la connessione o sposta il target in mare.':d.pending?'Carico canali, barene e strutture…':'Tocca la mappa per i dati di un punto; da lì puoi spostare il target.',!!(d.cached||missing.length));
   const adv=advise(state.sp,now,spots[0]?spots[0].dep:refDep);
   $('#sum').innerHTML=`<h2>${S.name}${S.alt?' ('+S.alt+')':''} · ${state.mode==='riva'?'da riva':'dalla barca'}</h2>
     <p>${state.example?'<span class="pill warn">Esempio: Chioggia</span> ':''}${now.risk?'<span class="pill warn">Oltre i tuoi limiti di mare o vento</span>':'<span class="pill">Mare entro i tuoi limiti</span>'} ${S.months.includes(loc(now.t).getUTCMonth()+1)?'<span class="pill">In stagione</span>':'<span class="pill warn">Fuori stagione</span>'}</p>
@@ -1386,7 +1430,7 @@ async function analyze(){
   if(run!==state.run)return;
   data.pending=false;
   if(st){
-    if(grid&&applyCoast(grid,st.coast)){deriveGrid(grid);delete grid.sdep}
+    if(grid&&applyCoast(grid,st.coast))deriveGrid(grid);
     data.structs=filterStructs(st.pts,grid);data.lines=st.lines;data.areas=st.areas;drawStatic();
   }
   if(grid&&met)store.set('cartapesca_last',slim(data));
@@ -1428,7 +1472,7 @@ function syncControls(){
   $('#night').setAttribute('aria-pressed',!!state.night);$('#night').textContent=state.night?'Giorno':'Notte';
 }
 function init(){
-  if(!window.L||!window.SunCalc){$('#setpt').style.display='none';$('#sum').innerHTML='<h2>Qui internet è bloccato</h2><p>Se stai guardando l\'anteprima dentro l\'app di Claude, la pagina non può scaricare mappe e dati. Aprila dal suo indirizzo web in Safari (per esempio su GitHub Pages). Se sei già nel browser, controlla la connessione e ricarica.</p>';return}
+  if(!window.L||!window.SunCalc){$('#sum').innerHTML='<h2>Qui internet è bloccato</h2><p>Se stai guardando l\'anteprima dentro l\'app di Claude, la pagina non può scaricare mappe e dati. Aprila dal suo indirizzo web in Safari (per esempio su GitHub Pages). Se sei già nel browser, controlla la connessione e ricarica.</p>';return}
   if(!$('#p-'+state.tab))state.tab='spot';
   try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches)document.documentElement.classList.add('standalone')}catch(e){}
   const fit=()=>document.documentElement.style.setProperty('--hh',$('#hd').offsetHeight+'px');
@@ -1477,7 +1521,6 @@ function init(){
       else setStatus('Nessuna località trovata per "'+q+'". Prova con il nome del comune.',true);
     }catch(e){setStatus('Ricerca non riuscita: controlla la connessione.',true)}
   };
-  $('#setpt').onclick=()=>{const c=map.getCenter();setPoint(c.lat,c.lng,false)};
   $('#go').onclick=search;$('#place').onkeydown=e=>{if(e.key==='Enter')search()};
   $('#gps').onclick=()=>{
     if(!navigator.geolocation){setStatus('Questo browser non fornisce la posizione. Usa il mirino sulla mappa.',true);return}
