@@ -217,7 +217,7 @@ footer a{color:var(--sea)}
 </head>
 <body>
 <header id="hd">
-  <div class="top"><h1>Carta di pesca <small style="font:400 11px var(--body);opacity:.7;text-transform:none">v13</small></h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
+  <div class="top"><h1>Carta di pesca <small style="font:400 11px var(--body);opacity:.7;text-transform:none">v15</small></h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
   <div class="ctl"><select id="spsel" aria-label="Specie da cercare"></select></div>
   <div class="ctl">
     <div class="seg" role="group" aria-label="Da dove peschi">
@@ -563,19 +563,22 @@ const setStatus=(t,err)=>{const s=$('#status');s.textContent=t||'';s.className=e
 
 /* ---------- Caricamento dati ---------- */
 /* Rilievo ad alta risoluzione della laguna di Venezia (EMODnet HRSM, Deltares 2022): celle di circa 20 x 29 m, bassifondi compresi.
-   Sta nella cartella "laguna" in riquadri PNG da 256 px: profondità in decimetri nei canali rosso e verde, 0 = nessun dato. */
-const HR={x0:12.1166667,y1:45.5833333,d:1/3840,w:1728,h:1600,ts:256,dir:'laguna/',cache:new Map(),
+   Sta nella cartella "laguna" in riquadri PNG da 256 px: profondità in decimetri nei canali rosso e verde, 0 = nessun dato.
+   Il rilievo è riferito alla bassa marea astronomica: "datum" lo riporta al medio mare (circa 40 cm più su), che è il riferimento di marea e livelli nella app. */
+const HR={datum:.4,x0:12.1166667,y1:45.5833333,d:1/3840,w:1728,h:1600,ts:256,dir:'laguna/',cache:new Map(),
   tiles:new Set('3_0 4_0 5_0 6_0 1_1 2_1 3_1 4_1 5_1 6_1 0_2 1_2 2_2 3_2 4_2 0_3 1_3 2_3 3_3 0_4 1_4 2_4 1_5 2_5 2_6'.split(' '))};
+async function pixels(blob,w,h){
+  let im;try{im=await createImageBitmap(blob,{colorSpaceConversion:'none',premultiplyAlpha:'none'})}catch(e){im=await createImageBitmap(blob)}
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+  const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(im,0,0);
+  return cx.getImageData(0,0,w,h).data;
+}
 function hrTile(n){
   if(!HR.cache.has(n))HR.cache.set(n,(async()=>{
     try{
       const r=await fetch(HR.dir+n+'.png');if(!r.ok)return null;
-      const bl=await r.blob();let im;
-      try{im=await createImageBitmap(bl,{colorSpaceConversion:'none',premultiplyAlpha:'none'})}catch(e){im=await createImageBitmap(bl)}
-      const cv=document.createElement('canvas');cv.width=cv.height=HR.ts;
-      const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(im,0,0);
-      const px=cx.getImageData(0,0,HR.ts,HR.ts).data,out=new Float32Array(HR.ts*HR.ts);
-      for(let k=0;k<out.length;k++){const v=px[k*4]*256+px[k*4+1];out[k]=v?(v-1)/10-2.5:NaN}   // profondità in metri, positiva verso il basso
+      const px=await pixels(await r.blob(),HR.ts,HR.ts),out=new Float32Array(HR.ts*HR.ts);
+      for(let k=0;k<out.length;k++){const v=px[k*4]*256+px[k*4+1];out[k]=v?(v-1)/10-2.5+HR.datum:NaN}   // profondità in metri sotto il medio mare
       return out;
     }catch(e){return null}
   })());
@@ -697,6 +700,17 @@ async function loadGrid(lat,lon,R,run){
     }
   }
   }
+  // Dov'è acqua lo decide la batimetria a colori di EMODnet, che ha la maschera di terra giusta: la griglia grezza
+  // segna come "fondale" anche i campi di bonifica sotto il livello del mare. Le profondità restano quelle della griglia.
+  try{
+    const hs=(lons[1]-lons[0])/2,ht=(lats[1]-lats[0])/2;
+    const r=await fetch(`https://ows.emodnet-bathymetry.eu/wms?service=WMS&version=1.1.1&request=GetMap&layers=emodnet:mean_multicolour&styles=&srs=EPSG:4326&format=image/png&transparent=true&width=${n}&height=${n}&bbox=${(lons[0]-hs).toFixed(7)},${(lats[0]-ht).toFixed(7)},${(lons[n-1]+hs).toFixed(7)},${(lats[n-1]+ht).toFixed(7)}`);
+    if(r.ok){
+      const px=await pixels(await r.blob(),n,n);let wet=0;
+      for(let k=3;k<px.length;k+=4)if(px[k]>127)wet++;
+      if(wet)for(let i=0;i<n;i++)for(let j=0;j<n;j++)if(px[((n-1-i)*n+j)*4+3]<=127&&z[i][j]<.5)z[i][j]=1;   // fuori dall'acqua: terra
+    }
+  }catch(e){}
   return {lats,lons,z,cell:(cx+cy)/2,cx,cy};                // deriveGrid si chiama quando la griglia diventa quella mostrata
 }
 function deriveGrid(g){
@@ -777,16 +791,22 @@ async function loadMeteo(lat,lon){
 }
 async function loadStructs(lat,lon,R){
   const dLa=R/MLAT,dLo=R/mlon(lat),bb=[lat-dLa,lon-dLo,lat+dLa,lon+dLo].map(v=>v.toFixed(5)).join(',');
-  const q=`[out:json][timeout:20];(way["man_made"~"^(breakwater|groyne|pier)$"](${bb});node["seamark:type"~"^(wreck|rock|platform)$"](${bb});node["natural"="reef"](${bb});node["man_made"="offshore_platform"](${bb});way["man_made"="offshore_platform"](${bb});way["seamark:type"="marine_farm"](${bb});way["waterway"="river"](${bb});way["waterway"~"^(canal|fairway|tidal_channel)$"](${bb});way["seamark:type"="fairway"](${bb});way["natural"="shoal"](${bb});way["wetland"~"^(saltmarsh|tidalflat)$"](${bb});way["natural"="coastline"](${bb}););out geom 3000;(relation["water"="lagoon"](${bb});way["water"="lagoon"](${bb});is_in(${lat.toFixed(5)},${lon.toFixed(5)})->.a;area.a["water"="lagoon"];);out tags;`;
+  const q=`[out:json][timeout:40];(way["man_made"~"^(breakwater|groyne|pier)$"](${bb});node["seamark:type"~"^(wreck|rock|platform)$"](${bb});node["natural"="reef"](${bb});node["man_made"="offshore_platform"](${bb});way["man_made"="offshore_platform"](${bb});way["seamark:type"="marine_farm"](${bb});way["waterway"="river"](${bb});way["waterway"~"^(canal|fairway|tidal_channel)$"](${bb});way["seamark:type"="fairway"](${bb});way["natural"="shoal"](${bb});way["wetland"~"^(saltmarsh|tidalflat)$"](${bb});way["natural"="coastline"](${bb}););out geom 3000;(relation["water"="lagoon"](${bb});way["water"="lagoon"](${bb}););out tags;`;
+  // Il server pubblico nelle ore piene tiene in coda anche 30-40 secondi: aspetto fino a 70 s e intanto chiedo anche ai server di riserva; vale la prima risposta buona.
+  const ask=async host=>{
+    for(let t=0;t<4;t++){
+      const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),70000),t0=Date.now();
+      try{
+        const r=await fetch(host+'/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'},signal:ac.signal});
+        if(r.ok){const j=await r.json();if(j&&Array.isArray(j.elements))return j}
+      }catch(e){}finally{clearTimeout(tm)}
+      if(Date.now()-t0>30000)break;                         // ha già aspettato a lungo: non insisto su questo server
+      await new Promise(r=>setTimeout(r,3000*(t+1)));       // "occupato" immediato: riprovo poco dopo
+    }
+    throw new Error('osm');
+  };
   let j=null;
-  for(let t=0;t<6&&!j;t++){                               // il server pubblico risponde spesso "occupato": riprovo, e una volta passo da quello di riserva
-    if(t)await new Promise(r=>setTimeout(r,2500*t));
-    const alt=t===2,ac=new AbortController(),tm=setTimeout(()=>ac.abort(),alt?12000:22000);
-    try{
-      const r=await fetch((alt?'https://overpass.private.coffee':'https://overpass-api.de')+'/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'},signal:ac.signal});
-      if(r.ok)j=await r.json();
-    }catch(e){}finally{clearTimeout(tm)}
-  }
+  try{j=await Promise.any(['https://overpass-api.de','https://overpass.private.coffee','https://overpass.kumi.systems'].map(ask))}catch(e){}
   if(!j)throw new Error('osm');
   {
     const pts=[],lines=[],areas=[],coast=[],canals=[];let lagoon=false;
@@ -836,7 +856,7 @@ function applyCoast(g,coast){
 }
 // In laguna EMODnet ha rilievi veri solo nei canali: sui bassifondi interpola tra un canale e l'altro e segna 3-6 m dove c'è circa 1 m.
 // Tengo il dato dove c'è un canale segnato e riporto il resto a un fondale da bassofondo, marcandolo come stima.
-const SHOAL=1.2,SHOULDER=2;
+const SHOAL=1.7,SHOULDER=2.3;
 function applyLagoon(g,st){
   g.est=null;
   if(!st||!st.lagoon)return 0;
@@ -1063,7 +1083,7 @@ function gridIso(g,levels,skipHr){
     const i0=Math.min(N-2,Math.floor(y/U)),fi=y/U-i0;
     for(let x=0;x<w;x++){
       const j0=Math.min(N-2,Math.floor(x/U)),fj=x/U-j0;
-      v[y*w+x]=skipHr&&g.hr&&g.hr[i0][j0]&&g.hr[i0+1][j0]&&g.hr[i0][j0+1]&&g.hr[i0+1][j0+1]?NaN
+      v[y*w+x]=!(g.water[i0][j0]&&g.water[i0+1][j0]&&g.water[i0][j0+1]&&g.water[i0+1][j0+1])||(skipHr&&g.hr&&g.hr[i0][j0]&&g.hr[i0+1][j0]&&g.hr[i0][j0+1]&&g.hr[i0+1][j0+1])?NaN
         :(sd[i0][j0]*(1-fj)+sd[i0][j0+1]*fj)*(1-fi)+(sd[i0+1][j0]*(1-fj)+sd[i0+1][j0+1]*fj)*fi;
     }
   }
@@ -1423,7 +1443,7 @@ function render(){
   if(d.grid){const c=(N-1)/2,v=d.grid.dep[c][c];if(!isNaN(v))refDep=v}
   d.refDep=refDep;
   const missing=[];if(!d.grid)missing.push('batimetria');if(!d.met||!d.met.hasM)missing.push('dati del mare');if(!d.met||!d.met.hasF)missing.push('meteo (il servizio può aver raggiunto il limite di richieste: di solito torna entro un\'ora)');
-  setStatus(d.cached?'Senza rete: mostro i dati salvati il '+new Date(d.cached).toLocaleString('it-IT',{dateStyle:'short',timeStyle:'short'})+'.':missing.length?'Non disponibili per questo punto: '+missing.join(', ')+'. Controlla la connessione o sposta il target in mare.':d.pending?'Carico canali, barene e strutture…':d.osmFail&&d.grid?'Canali e barene non caricati (servizio occupato): in laguna i fondali fuori dai canali possono risultare troppo profondi. Riprova tra poco.':'Tocca la mappa per i dati di un punto; da lì puoi spostare il target.',!!(d.cached||missing.length||(d.osmFail&&d.grid&&!d.pending)));
+  setStatus(d.cached?'Senza rete: mostro i dati salvati il '+new Date(d.cached).toLocaleString('it-IT',{dateStyle:'short',timeStyle:'short'})+'.':missing.length?'Non disponibili per questo punto: '+missing.join(', ')+'. Controlla la connessione o sposta il target in mare.':d.pending?'Carico canali, barene e strutture (nelle ore piene può servire fino a un minuto)…':d.osmFail&&d.grid?'Canali, barene e strutture non caricati: il servizio OpenStreetMap è occupato. Fondali e isobate restano validi; riprova tra qualche minuto.':'Tocca la mappa per i dati di un punto; da lì puoi spostare il target.',!!(d.cached||missing.length||(d.osmFail&&d.grid&&!d.pending)));
   const adv=advise(state.sp,now,spots[0]?spots[0].dep:refDep);
   $('#sum').innerHTML=`<h2>${S.name}${S.alt?' ('+S.alt+')':''} · ${state.mode==='riva'?'da riva':'dalla barca'}</h2>
     <p>${state.example?'<span class="pill warn">Esempio: Chioggia</span> ':''}${now.risk?'<span class="pill warn">Oltre i tuoi limiti di mare o vento</span>':'<span class="pill">Mare entro i tuoi limiti</span>'} ${S.months.includes(loc(now.t).getUTCMonth()+1)?'<span class="pill">In stagione</span>':'<span class="pill warn">Fuori stagione</span>'}</p>
