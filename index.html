@@ -217,7 +217,7 @@ footer a{color:var(--sea)}
 </head>
 <body>
 <header id="hd">
-  <div class="top"><h1>Carta di pesca <small style="font:400 11px var(--body);opacity:.7;text-transform:none">v16</small></h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
+  <div class="top"><h1>Carta di pesca <small style="font:400 11px var(--body);opacity:.7;text-transform:none">v17</small></h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
   <div class="ctl"><select id="spsel" aria-label="Specie da cercare"></select></div>
   <div class="ctl">
     <div class="seg" role="group" aria-label="Da dove peschi">
@@ -287,7 +287,7 @@ footer a{color:var(--sea)}
     <section class="pane" id="p-esca"></section>
     <section class="pane" id="p-diario"></section>
     <footer>
-      Dati: batimetria <a href="https://emodnet.ec.europa.eu/en/bathymetry">EMODnet</a> (mari europei, griglia ~115 m) e, per la laguna di Venezia, rilievo ad alta risoluzione EMODnet HRSM di Deltares (2022, celle di circa 25 m), meteo e mare <a href="https://open-meteo.com">Open-Meteo</a>, strutture <a href="https://www.openstreetmap.org">OpenStreetMap</a>. Spot, attività, limpidezza dell'acqua e scarroccio sono stime calcolate: non sostituiscono carta nautica, ecoscandaglio e bollettino ufficiale. Il livello del mare viene da un modello a 8 km ed è indicativo: per la laguna fai riferimento alle previsioni del Centro Maree del Comune di Venezia. I bassi fondali segnati non garantiscono la navigabilità: in laguna valgono bricole, canali segnati e carta ufficiale. Verifica sempre divieti locali (porti, aree marine protette, ordinanze della Capitaneria), taglie minime e limiti di cattura in vigore.
+      Dati: batimetria <a href="https://emodnet.ec.europa.eu/en/bathymetry">EMODnet</a> (mari europei, griglia ~115 m) e, per la laguna di Venezia, rilievo ad alta risoluzione EMODnet HRSM di Deltares (2022) con il multibeam dei canali del CNR-ISMAR (2013), celle da circa 12 m, meteo e mare <a href="https://open-meteo.com">Open-Meteo</a>, strutture <a href="https://www.openstreetmap.org">OpenStreetMap</a>. Spot, attività, limpidezza dell'acqua e scarroccio sono stime calcolate: non sostituiscono carta nautica, ecoscandaglio e bollettino ufficiale. Il livello del mare viene da un modello a 8 km ed è indicativo: per la laguna fai riferimento alle previsioni del Centro Maree del Comune di Venezia. I bassi fondali segnati non garantiscono la navigabilità: in laguna valgono bricole, canali segnati e carta ufficiale. Verifica sempre divieti locali (porti, aree marine protette, ordinanze della Capitaneria), taglie minime e limiti di cattura in vigore.
     </footer>
     <nav class="tabs" role="tablist">
       <button role="tab" data-t="spot">Spot</button>
@@ -562,21 +562,24 @@ let data=null;
 const setStatus=(t,err)=>{const s=$('#status');s.textContent=t||'';s.className=err?'err':''};
 
 /* ---------- Caricamento dati ---------- */
-/* Rilievo ad alta risoluzione della laguna di Venezia (EMODnet HRSM, Deltares 2022): celle di circa 20 x 29 m, bassifondi compresi.
-   Sta nella cartella "laguna" in riquadri PNG da 256 px: profondità in decimetri nei canali rosso e verde, 0 = nessun dato.
+/* Rilievo ad alta risoluzione della laguna di Venezia: batimetria EMODnet HRSM di Deltares (2022, bassifondi compresi) fusa con il
+   multibeam dei canali del CNR-ISMAR (2013, 5 m), che dove esiste ha la precedenza. Sta nella cartella "laguna" in tre livelli di dettaglio
+   (celle di circa 12, 25 e 50 m) a riquadri PNG da 256 px: profondità in decimetri nei canali rosso e verde, 0 = nessun dato.
    Il rilievo è riferito alla bassa marea astronomica: "datum" lo riporta al medio mare (circa 40 cm più su), che è il riferimento di marea e livelli nella app. */
-const HR={datum:.4,x0:12.1166667,y1:45.5833333,d:1/3840,w:1728,h:1600,ts:256,dir:'laguna/',cache:new Map(),
-  tiles:new Set('3_0 4_0 5_0 6_0 1_1 2_1 3_1 4_1 5_1 6_1 0_2 1_2 2_2 3_2 4_2 0_3 1_3 2_3 3_3 0_4 1_4 2_4 1_5 2_5 2_6'.split(' '))};
+const HR={datum:.4,x0:12.1166667,y1:45.5833333,ts:256,cache:new Map(),lv:[
+  {d:1/7680,w:3456,h:3200,tiles:new Set('10_0 11_0 7_1 8_1 9_1 10_1 11_1 12_1 5_2 6_2 7_2 8_2 9_2 10_2 11_2 12_2 3_3 4_3 5_3 6_3 7_3 8_3 9_3 10_3 2_4 3_4 4_4 5_4 6_4 7_4 8_4 9_4 10_4 1_5 2_5 3_5 4_5 5_5 6_5 7_5 8_5 9_5 10_5 1_6 2_6 3_6 4_6 5_6 6_6 7_6 8_6 0_7 1_7 2_7 3_7 4_7 5_7 6_7 7_7 8_7 0_8 1_8 2_8 3_8 4_8 5_8 6_8 7_8 8_8 0_9 1_9 2_9 3_9 4_9 5_9 2_10 3_10 4_10 5_10 6_10 2_11 3_11 4_11 5_11 6_11 4_12'.split(' '))},
+  {d:1/3840,w:1728,h:1600,tiles:new Set('3_0 4_0 5_0 6_0 1_1 2_1 3_1 4_1 5_1 6_1 0_2 1_2 2_2 3_2 4_2 5_2 0_3 1_3 2_3 3_3 4_3 0_4 1_4 2_4 3_4 4_4 1_5 2_5 3_5 2_6'.split(' '))},
+  {d:1/1920,w:864,h:800,tiles:new Set('0_0 1_0 2_0 3_0 0_1 1_1 2_1 0_2 1_2 2_2 1_3'.split(' '))}]};
 async function pixels(blob,w,h){
   let im;try{im=await createImageBitmap(blob,{colorSpaceConversion:'none',premultiplyAlpha:'none'})}catch(e){im=await createImageBitmap(blob)}
   const cv=document.createElement('canvas');cv.width=w;cv.height=h;
   const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(im,0,0);
   return cx.getImageData(0,0,w,h).data;
 }
-function hrTile(n){
+function hrTile(n){                                        // n = livello/colonna_riga
   if(!HR.cache.has(n))HR.cache.set(n,(async()=>{
     try{
-      const r=await fetch(HR.dir+n+'.png');if(!r.ok)return null;
+      const r=await fetch('laguna/'+n+'.png');if(!r.ok)return null;
       const px=await pixels(await r.blob(),HR.ts,HR.ts),out=new Float32Array(HR.ts*HR.ts);
       for(let k=0;k<out.length;k++){const v=px[k*4]*256+px[k*4+1];out[k]=v?(v-1)/10-2.5+HR.datum:NaN}   // profondità in metri sotto il medio mare
       return out;
@@ -585,11 +588,12 @@ function hrTile(n){
   return HR.cache.get(n);
 }
 async function loadHR(lat,lon,R){
+  const lv=R<=6000?0:R<=20000?1:2,L=HR.lv[lv],d=L.d;        // da vicino il dettaglio pieno, da lontano i livelli più leggeri
   const dLa=R/MLAT*1.1,dLo=R/mlon(lat)*1.1,cl=(v,m)=>Math.max(0,Math.min(m,v));
-  const X0=cl(Math.floor((lon-dLo-HR.x0)/HR.d),HR.w),X1=cl(Math.ceil((lon+dLo-HR.x0)/HR.d),HR.w),Y0=cl(Math.floor((HR.y1-lat-dLa)/HR.d),HR.h),Y1=cl(Math.ceil((HR.y1-lat+dLa)/HR.d),HR.h);
+  const X0=cl(Math.floor((lon-dLo-HR.x0)/d),L.w),X1=cl(Math.ceil((lon+dLo-HR.x0)/d),L.w),Y0=cl(Math.floor((HR.y1-lat-dLa)/d),L.h),Y1=cl(Math.ceil((HR.y1-lat+dLa)/d),L.h);
   const w=X1-X0,h=Y1-Y0;if(w<2||h<2)return null;
   const jobs=[];
-  for(let ty=Math.floor(Y0/HR.ts);ty*HR.ts<Y1;ty++)for(let tx=Math.floor(X0/HR.ts);tx*HR.ts<X1;tx++)if(HR.tiles.has(tx+'_'+ty))jobs.push(hrTile(tx+'_'+ty).then(t=>({tx,ty,t})));
+  for(let ty=Math.floor(Y0/HR.ts);ty*HR.ts<Y1;ty++)for(let tx=Math.floor(X0/HR.ts);tx*HR.ts<X1;tx++)if(L.tiles.has(tx+'_'+ty))jobs.push(hrTile(lv+'/'+tx+'_'+ty).then(t=>({tx,ty,t})));
   if(!jobs.length)return null;
   const v=new Float32Array(w*h).fill(NaN);let any=false;
   for(const {tx,ty,t} of await Promise.all(jobs)){
@@ -597,15 +601,15 @@ async function loadHR(lat,lon,R){
     const ox=tx*HR.ts,oy=ty*HR.ts;
     for(let y=Math.max(Y0,oy);y<Math.min(Y1,oy+HR.ts);y++)for(let x=Math.max(X0,ox);x<Math.min(X1,ox+HR.ts);x++){const q=t[(y-oy)*HR.ts+x-ox];if(q===q){v[(y-Y0)*w+x-X0]=q;any=true}}
   }
-  return any?{X0,Y0,w,h,v,iso:{}}:null;
+  return any?{lv,d,X0,Y0,w,h,v,iso:{}}:null;
 }
-const hrAt=(hr,la,lo)=>{if(!hr)return NaN;const x=Math.floor((lo-HR.x0)/HR.d)-hr.X0,y=Math.floor((HR.y1-la)/HR.d)-hr.Y0;return x<0||y<0||x>=hr.w||y>=hr.h?NaN:hr.v[y*hr.w+x]};
+const hrAt=(hr,la,lo)=>{if(!hr)return NaN;const x=Math.floor((lo-HR.x0)/hr.d)-hr.X0,y=Math.floor((HR.y1-la)/hr.d)-hr.Y0;return x<0||y<0||x>=hr.w||y>=hr.h?NaN:hr.v[y*hr.w+x]};
 // Ogni cella della griglia coperta dal rilievo prende la profondità media misurata al suo interno: lì non serve più nessuna stima.
 function applyHR(g,hr){
   g.hr=null;if(!hr)return 0;
   const n=g.lats.length,hl=(g.lats[1]-g.lats[0])/2,ho=(g.lons[1]-g.lons[0])/2,m=g.z.map(r=>r.map(()=>false));let c=0;
   for(let i=0;i<n;i++)for(let j=0;j<n;j++){
-    const xa=Math.floor((g.lons[j]-ho-HR.x0)/HR.d)-hr.X0,xb=Math.ceil((g.lons[j]+ho-HR.x0)/HR.d)-hr.X0,ya=Math.floor((HR.y1-g.lats[i]-hl)/HR.d)-hr.Y0,yb=Math.ceil((HR.y1-g.lats[i]+hl)/HR.d)-hr.Y0;
+    const D=hr.d,xa=Math.floor((g.lons[j]-ho-HR.x0)/D)-hr.X0,xb=Math.ceil((g.lons[j]+ho-HR.x0)/D)-hr.X0,ya=Math.floor((HR.y1-g.lats[i]-hl)/D)-hr.Y0,yb=Math.ceil((HR.y1-g.lats[i]+hl)/D)-hr.Y0;
     if(xa<0||ya<0||xb>hr.w||yb>hr.h)continue;
     let sum=0,k=0;for(let y=ya;y<yb;y++)for(let x=xa;x<xb;x++){const q=hr.v[y*hr.w+x];if(q===q){sum+=q;k++}}
     if(k>=.5*(xb-xa)*(yb-ya)){g.z[i][j]=-sum/k;m[i][j]=true;c++}
@@ -731,7 +735,19 @@ function deriveGrid(g){
     return Math.hypot(gx,gy)*100;                           // metri di dislivello ogni 100 m
   }));
   const open=water.map((r,i)=>r.map((v,j)=>{if(!v)return false;let n=0;for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const y=i+a,x=j+b;if((a||b)&&(y<0||x<0||y>=N||x>=N||water[y][x]))n++}return n>=5}));
-  return Object.assign(g,{dep,water,open,dLand,nl,slope,est:g.est||null,sdep:null,_wm:null});
+  // Rilievo relativo: quanto una cella è più alta (dosso, positivo) o più fonda (buca, negativo) della media del fondale nei 500 m attorno.
+  // In mare aperto, dove il fondo è quasi piatto, è il segnale che distingue i punti che tengono il pesce.
+  const kb=Math.max(2,Math.min(6,Math.round(500/cell))),M1=N+1,I=new Float64Array(M1*M1),C=new Float64Array(M1*M1);
+  for(let i=0;i<N;i++)for(let j=0;j<N;j++){
+    const w=water[i][j],q=(i+1)*M1+j+1;
+    I[q]=(w?dep[i][j]:0)+I[q-M1]+I[q-1]-I[q-M1-1];C[q]=(w?1:0)+C[q-M1]+C[q-1]-C[q-M1-1];
+  }
+  const bpi=dep.map((r,i)=>r.map((v,j)=>{
+    if(!water[i][j])return 0;
+    const a=Math.max(0,i-kb),b=Math.min(N,i+kb+1),c=Math.max(0,j-kb),d=Math.min(N,j+kb+1),box=A=>A[b*M1+d]-A[a*M1+d]-A[b*M1+c]+A[a*M1+c],n=box(C);
+    return n>4?box(I)/n-v:0;
+  }));
+  return Object.assign(g,{dep,water,open,dLand,nl,slope,bpi,est:g.est||null,sdep:null,_wm:null});
 }
 const symCode=s=>!s?null:/thunder/.test(s)?95:/snow/.test(s)?71:/sleet/.test(s)?67:/heavyrain/.test(s)?(/showers/.test(s)?82:65):/lightrain/.test(s)?(/showers/.test(s)?80:61):/rain/.test(s)?(/showers/.test(s)?81:63):/fog/.test(s)?45:/^cloudy/.test(s)?3:/partlycloudy/.test(s)?2:/fair/.test(s)?1:/clearsky/.test(s)?0:3;
 // Meteo di riserva (servizio meteorologico norvegese) quando quello principale non risponde
@@ -1011,14 +1027,16 @@ function scoreCells(g,S,structs,mode){
     const dep=g.dep[i][j],la=g.lats[i],lo=g.lons[j],dl=g.dLand[i][j];
     if(mode==='riva'&&!(dl<=g.cell*1.6))continue;
     const sD=trap(dep,S.depth);if(sD<=0)continue;
-    const sl=g.slope[i][j],sS=Math.min(1,sl/S.slopeRef);
+    const sl=g.slope[i][j],off=dl>1000&&!(g.hr&&g.hr[i][j]),bp=off&&g.bpi?g.bpi[i][j]:0;
+    // al largo bastano scalini di mezzo metro o un dosso/buca di qualche decimetro per fare la differenza
+    const sS=off?Math.max(Math.min(1,sl/S.slopeRef),Math.min(1,sl/.8),Math.min(1,Math.abs(bp)/.8)):Math.min(1,sl/S.slopeRef);
     let d2=Infinity,near=null;const px=lo*kx,py=la*ky;
     for(let k=0;k<st.length;k++){const a=sx[k]-px,b=sy[k]-py,q=a*a+b*b;if(q<d2){d2=q;near=st[k]}}
     const ds=Math.sqrt(d2),sT=near?Math.exp(-ds/300):0,sH=isFinite(dl)?Math.exp(-dl/400):0;
     const wT=st.length?S.w.struct:0,wsum=S.w.slope+wT+S.w.shore||1;
     const score=sD*(.45+.55*(S.w.slope*sS+wT*sT+S.w.shore*sH)/wsum);
     const p=g.nl[i][j],brgSea=p&&dl<=1500?bearing(g.lats[p[0]],g.lons[p[1]],la,lo):null;
-    cand.push({i,j,la,lo,dep,sl,ds,near,dl,score,sD,brgSea});
+    cand.push({i,j,la,lo,dep,sl,ds,near,dl,score,sD,brgSea,off,bp});
   }
   return cand;
 }
@@ -1031,7 +1049,8 @@ function findSpots(d,sp,mode){
   for(const c of cand){if(pick.length>=6)break;if(pick.every(p=>dist(p.la,p.lo,c.la,c.lo)>=minSep))pick.push(c)}
   return pick.map(c=>{
     const why=[`Fondale ${g.est&&g.est[c.i][c.j]?'stimato circa ':''}${n1(c.dep)} m`+(c.sD>=1?', nella fascia ideale':'')];
-    if(c.sl>=S.slopeRef*.6)why.push(`Scalino: ${n1(c.sl)} m di dislivello ogni 100 m`);
+    if(c.sl>=S.slopeRef*.6||(c.off&&c.sl>=.5))why.push(`Scalino: ${n1(c.sl)} m di dislivello ogni 100 m`);
+    if(c.off&&Math.abs(c.bp)>=.4)why.push(c.bp>0?`Dosso: ${n1(c.bp)} m più alto del fondale attorno`:`Buca: ${n1(-c.bp)} m più fonda del fondale attorno`);
     if(c.near&&c.ds<=450)why.push(`${STRUCT_LABEL[c.near.type]}${c.near.name?' ('+c.near.name+')':''} a ${kmLabel(c.ds)}`);
     if(S.w.shore>0&&isFinite(c.dl)&&c.dl<=350)why.push(`Sotto costa, a circa ${kmLabel(c.dl)} da terra`);
     return Object.assign(c,{why,pts:Math.round(c.score*100),dRef:dist(d.lat,d.lon,c.la,c.lo),brg:bearing(d.lat,d.lon,c.la,c.lo)});
@@ -1102,7 +1121,7 @@ function gridIso(g,levels,skipHr){
 }
 // Isobate dal rilievo della laguna, alla sua risoluzione piena: non dipendono dal raggio scelto.
 function hrIso(hr,levels,step){
-  const {w,h,v}=hr;step=step||1;
+  const {w,h,v}=hr,D=hr.d;step=step||1;
   if(!hr.s){                                               // leggera lisciatura 3x3 per togliere il rumore del dato da satellite
     const s=hr.s=new Float32Array(w*h);
     for(let y=0;y<h;y++)for(let x=0;x<w;x++){
@@ -1112,10 +1131,10 @@ function hrIso(hr,levels,step){
       s[y*w+x]=sum/n;
     }
   }
-  if(step===1)return contours(hr.s,w,h,levels,y=>HR.y1-(hr.Y0+y+.5)*HR.d,x=>HR.x0+(hr.X0+x+.5)*HR.d);
+  if(step===1)return contours(hr.s,w,h,levels,y=>HR.y1-(hr.Y0+y+.5)*D,x=>HR.x0+(hr.X0+x+.5)*D);
   const w2=Math.floor(w/step),h2=Math.floor(h/step),t=new Float32Array(w2*h2);      // mappa vista da lontano: un punto ogni "step"
   for(let y=0;y<h2;y++)for(let x=0;x<w2;x++)t[y*w2+x]=hr.s[y*step*w+x*step];
-  return contours(t,w2,h2,levels,y=>HR.y1-(hr.Y0+y*step+.5)*HR.d,x=>HR.x0+(hr.X0+x*step+.5)*HR.d);
+  return contours(t,w2,h2,levels,y=>HR.y1-(hr.Y0+y*step+.5)*D,x=>HR.x0+(hr.X0+x*step+.5)*D);
 }
 
 /* ---------- Scelta di esca e colore ---------- */
@@ -1254,7 +1273,8 @@ function wxCard(Hd,title){
 
 /* ---------- Mappa ---------- */
 let LAY,heatRenderer,emodLayer,BASE,heatLayer,map,refMarker,areaRect,isoLayer,spotLayer,structLayer,favLayer,logLayer,navLayer,canalLayer,hazLayer,navRenderer;
-const ISO_LEVELS={1:[2,5,10,20,50,100,200],2:[1,2,3,5,7,10,15,20,30,50,75,100,200],3:[.5,1,1.5,2,2.5,3,4,5,6,7,8,10,12,15,20,25,30,40,50,75,100,150,200]},ISO_MAIN=[5,10,20,50,100,200];
+const ISO_LEVELS={1:[2,5,10,15,20,30,50,100,200],2:[1,2,3,5,7,10,12,15,17,20,22,25,27,30,35,40,50,75,100,200],
+  3:[.5,1,1.5,2,2.5,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,32,34,36,38,40,45,50,60,75,100,150,200]},ISO_MAIN=[5,10,20,50,100,200];
 const isoCol=lv=>{const t=Math.max(0,Math.min(1,Math.log(lv/.5)/Math.log(400))),m=(a,b)=>Math.round(a+(b-a)*t);return `rgb(${m(70,2)},${m(170,22)},${m(200,40)})`};
 let isoRenderer;
 function initMap(){
@@ -1276,16 +1296,16 @@ function initMap(){
   areaRect=L.rectangle([[0,0],[0,0]],{color:'#0e2a3b',weight:1.5,dashArray:'6 5',fill:false,interactive:false}).addTo(map);
   refMarker.on('dragend',()=>{const p=refMarker.getLatLng();setPoint(p.lat,p.lng,false)});
   map.on('click',e=>showInfo(e.latlng.lat,e.latlng.lng));
-  map.on('moveend',scheduleView);
+  map.on('moveend',scheduleView);map.on('zoomend',scheduleView);
 
 }
 /* ---------- Area visibile: isobate, zone probabili e bassi fondali seguono la mappa; il raggio serve solo agli spot ---------- */
-let view=null,viewSeq=0,viewTimer=null,osmCache=[],osmBusy=false,lastIsoKey='';
+let view=null,viewTimer=null,osmCache=[],osmBusy=false,lastIsoKey='';
 const mapGrid=()=>view&&view.grid?view.grid:data&&data.grid;
 const mapHr=()=>view&&view.grid?view.hr:data&&data.hr;
-const isoMode=()=>{const z=map.getZoom(),u=ISO_LEVELS[state.isoDens]?state.isoDens:2;return {dens:z>=13?u:z>=12?Math.min(u,2):1,step:z>=13?1:z>=11?2:4}};   // da lontano meno linee
+const isoMode=()=>{const z=map.getZoom(),u=ISO_LEVELS[state.isoDens]?state.isoDens:2;return {dens:z>=13?u:z>=12?Math.min(u,2):1,step:z===11?2:1}};   // da lontano meno linee
 const osmFor=(lat,lon,R)=>{for(const c of osmCache)if(Math.abs(lat-c.lat)*MLAT+R<=c.R+60&&Math.abs(lon-c.lon)*mlon(lat)+R<=c.R+60)return c.st;return null};
-function scheduleView(){clearTimeout(viewTimer);viewTimer=setTimeout(loadView,600)}
+function scheduleView(){if(viewTimer)return;viewTimer=setTimeout(()=>{viewTimer=null;loadView()},600)}   // non si rimanda mai: anche se la mappa continua a muoversi, entro 0,6 s parte
 function scoreView(){
   if(!view||!view.grid||!data)return;
   const src=view.st?view.structs:data.structs||[],key=state.sp+'|'+state.mode+'|'+(view.st?'v':'t')+src.length;
@@ -1314,21 +1334,31 @@ async function viewOsm(){
   osmCache.push({lat:req.lat,lon:req.lon,R:req.R,st});if(osmCache.length>6)osmCache.shift();
   if(viewAdoptOsm())redrawMap();else viewOsm();            // nel frattempo la mappa si è spostata: richiedo la zona nuova
 }
+let viewBusy=false,viewAgain=false,viewFails=0;
 async function loadView(){
   if(!data||!data.grid||!map||data.cached)return;
+  if(viewBusy){viewAgain=true;return}                       // un caricamento alla volta: quello in corso arriva sempre in fondo, poi si ricontrolla
   const b=map.getBounds(),c=b.getCenter(),half=Math.max(dist(b.getSouth(),c.lng,b.getNorth(),c.lng),dist(c.lat,b.getWest(),c.lat,b.getEast()))/2;
+  if(!(half>0))return;
   const req={lat:c.lat,lon:c.lng,R:Math.min(40000,half*1.3)},want=req.R<=10000?1:req.R<=20000?2:req.R<=40000?4:8;
   const covers=g=>g&&g.lats[0]<=b.getSouth()&&g.lats[g.lats.length-1]>=b.getNorth()&&g.lons[0]<=b.getWest()&&g.lons[g.lons.length-1]>=b.getEast();
   const same=()=>{if(isoMode().dens+'_'+isoMode().step!==lastIsoKey)drawStatic()};
   if(covers(data.grid)&&data.grid.st<=want){if(view){view=null;redrawMap()}else same();return}       // basta la griglia del raggio
   if(view&&view.grid.st<=want&&(covers(view.grid)||(half*1.3>40000&&view.req.R>=40000&&dist(view.req.lat,view.req.lon,c.lat,c.lng)<15000))){same();return}
   if(map.getZoom()<9){same();return}
-  const seq=++viewSeq;
-  const [grid,hr]=await Promise.all([loadGrid(req.lat,req.lon,req.R,()=>seq===viewSeq,true).catch(()=>null),loadHR(req.lat,req.lon,req.R).catch(()=>null)]);
-  if(seq!==viewSeq||!grid||!data)return;
-  applyHR(grid,hr);deriveGrid(grid);
-  view={grid,hr:grid.hr?hr:null,req,st:null,structs:null,heat:null,heatIdx:{},heatKey:null};
-  viewAdoptOsm();redrawMap();viewOsm();
+  viewBusy=true;viewAgain=false;
+  let grid=null,hr=null;
+  try{[grid,hr]=await Promise.all([loadGrid(req.lat,req.lon,req.R,()=>true,true).catch(()=>null),loadHR(req.lat,req.lon,req.R).catch(()=>null)])}catch(e){}
+  viewBusy=false;
+  if(grid&&data){
+    viewFails=0;
+    try{
+      applyHR(grid,hr);deriveGrid(grid);
+      view={grid,hr:grid.hr?hr:null,req,st:null,structs:null,heat:null,heatIdx:{},heatKey:null};
+      viewAdoptOsm();redrawMap();viewOsm();
+    }catch(e){view=null}
+    if(viewAgain)scheduleView();
+  }else if(data&&++viewFails<=4)setTimeout(loadView,2500*viewFails);   // rete lenta o servizio occupato: riprovo da solo
 }
 /* ---------- Informazioni sul punto toccato ---------- */
 let infoMark=null,infoLL=null;
@@ -1344,10 +1374,11 @@ function pointInfo(la,lo){
       dep=v;const lvl=h.level==null?0:h.level,eff=Math.max(0,v+lvl),c=(vw&&vw.heatIdx?vw:d).heatIdx[i*1000+j],rel=c&&d.heatMax?c.score/d.heatMax:0,es=!isHr&&g.est&&g.est[i][j];
       rows.push(`Fondale ${es?'stimato circa ':''}<b>${n1(v)} m</b>${h.level!=null?`; con la marea di quell'ora circa <b>${n1(eff)} m</b>`:''}`);
       if(es)rows.push('<small>Bassofondo di laguna fuori dai canali: qui non ci sono rilievi, il valore è una stima prudente.</small>');
-      if(isHr)rows.push('<small>Dal rilievo ad alta risoluzione della laguna (celle di circa 25 m).</small>');
+      if(isHr)rows.push(`<small>Dal rilievo ad alta risoluzione della laguna (celle di circa ${[12,25,50][(vw?vw.hr:d.hr).lv]||25} m).</small>`);
       if(state.mode==='barca')rows.push(eff<state.draft+.2?'<span class="pill warn">Non passi con il tuo pescaggio</span>':eff<state.draft+.7?'<span class="pill warn">Margine ridotto sotto la chiglia</span>':es?'<span class="pill warn">Fondale stimato: passa piano e solo se conosci la zona</span>':'<span class="pill">Navigabile per il tuo pescaggio</span>');
       rows.push(`${S.name}: zona <b>${rel>=.87?'ad alta probabilità':rel>=.73?'buona':rel>=.6?'possibile':'poco adatta'}</b>${c?`, idoneità ${Math.round(c.score*100)}/100`:`: si cerca tra ${S.depth[1]} e ${S.depth[2]} m`}`);
-      if(g.slope[i][j]>=S.slopeRef*.6)rows.push(`Scalino: ${n1(g.slope[i][j])} m di dislivello ogni 100 m`);
+      if(g.slope[i][j]>=S.slopeRef*.6||(c&&c.off&&c.sl>=.5))rows.push(`Scalino: ${n1(g.slope[i][j])} m di dislivello ogni 100 m`);
+      if(c&&c.off&&Math.abs(c.bp)>=.4)rows.push(c.bp>0?`Dosso: ${n1(c.bp)} m più alto del fondale attorno`:`Buca: ${n1(-c.bp)} m più fonda del fondale attorno`);
       if(c&&c.near&&c.ds<=600)rows.push(`${STRUCT_LABEL[c.near.type]}${c.near.name?' ('+esc(c.near.name)+')':''} a ${kmLabel(c.ds)}`);
       if(isFinite(g.dLand[i][j])&&g.dLand[i][j]>0)rows.push(`Terra più vicina a circa ${kmLabel(g.dLand[i][j])}`);
       const e=c?exposure(c,h):null;if(e)rows.push(EXP_TXT[e].charAt(0).toUpperCase()+EXP_TXT[e].slice(1));
@@ -1457,6 +1488,12 @@ function drawHeat(){
       const q=k*4;D[q]=255-Math.round(31*t);D[q+1]=Math.round(179*(1-t));D[q+2]=Math.round(236-82*t);D[q+3]=Math.round(255*al);
     }
   });
+  // bordo netto attorno alle zone buone e alte: si leggono anche quando sono piccole, come al largo
+  const Z=zqOf(N),M=N*Z,a=(g.lats[1]-g.lats[0])/2,b=(g.lons[1]-g.lons[0])/2,la1=g.lats[N-1]+a,lo0=g.lons[0]-b,dy=(g.lats[N-1]-g.lats[0]+2*a)/M,dx=(g.lons[N-1]-g.lons[0]+2*b)/M;
+  const F=new Float32Array(M*M);for(let k=0;k<F.length;k++)F[k]=U[k]*W[k];
+  const [good,high]=contours(F,M,M,[.325,.675],y=>la1-(y+.5)*dy,x=>lo0+(x+.5)*dx);
+  if(good.length)L.polyline(good,{renderer:heatRenderer,color:'#d6249f',weight:1.2,opacity:.75,interactive:false}).addTo(heatLayer);
+  if(high.length)L.polyline(high,{renderer:heatRenderer,color:'#a3006f',weight:2,opacity:.9,interactive:false}).addTo(heatLayer);
 }
 function drawSpots(spots){
   spotLayer.clearLayers();
@@ -1542,7 +1579,7 @@ function renderSpots(spots,S,sel){
   const navCard=nv?`<div class="card"><h3>Fondali per la tua barca</h3><p>Pescaggio <b>${n1(state.draft)} m</b>, livello del mare <b>${nv.lvl>=0?'+':''}${nv.lvl.toFixed(2).replace('.',',')} m</b> alle ${hh(sel.t)} di ${dayName(sel.t)}.</p>
     <p><span class="key" style="background:#d62d20"></span>non si passa: ${pc(nv.red)}% dell'acqua nel riquadro · <span class="key" style="background:#f2a100"></span>meno di 70 cm sotto la chiglia o fondale solo stimato: ${pc(nv.amb)}%</p>
     <p class="note">La griglia dei fondali è a circa ${Math.round(d.grid.cell/10)*10} m: i canali stretti e i ghebi non si vedono, e il riferimento verticale può differire di qualche decimetro.${d.grid.est?' In laguna i rilievi esistono solo nei canali: fuori dai canali segnati il fondale è stimato da bassofondo (circa '+n1(SHOAL)+' m).':''} In laguna segui sempre le bricole e i canali segnati (linee blu), e usa questi colori solo per capire dove non provarci. Cambia il pescaggio nella scheda Piano.</p></div>`:'';
-  const heatCard=`<div class="card"><h3>Dove è più probabile trovare ${S.name.toLowerCase()}</h3><p><span class="key" style="background:${HEATCOL[0]}"></span>possibile · <span class="key" style="background:${HEATCOL[1]}"></span>buona · <span class="key" style="background:${HEATCOL[2]}"></span>alta</p><p class="note">Le zone rosa sulla mappa uniscono profondità adatta alla specie, cigli e pendenze del fondale, vicinanza a canali, strutture e costa. Sono una stima di dove cercare, non una garanzia; i numeri sono i punti migliori dentro quelle zone.</p></div>`;
+  const heatCard=`<div class="card"><h3>Dove è più probabile trovare ${S.name.toLowerCase()}</h3><p><span class="key" style="background:${HEATCOL[0]}"></span>possibile · <span class="key" style="background:${HEATCOL[1]}"></span>buona · <span class="key" style="background:${HEATCOL[2]}"></span>alta</p><p class="note">Le zone rosa sulla mappa uniscono profondità adatta alla specie, cigli e pendenze del fondale, vicinanza a canali, strutture e costa. Al largo contano anche dossi, buche e scalini di pochi decimetri. Il bordo sottile racchiude le zone buone, quello spesso le zone ad alta probabilità. Sono una stima di dove cercare, non una garanzia; i numeri sono i punti migliori dentro quelle zone.</p></div>`;
   p.innerHTML=heatCard+navCard+(dr?`<div class="card now"><h3>Scarroccio stimato, ${dayName(sel.t)} ${hh(sel.t)}</h3><p>Circa <b>${n1(dr.kn)} kn verso ${card(dr.to)}</b>. Per passare sopra lo spot fermati ${kmLabel(Math.max(30,dr.kn*1852/3))} a ${card(dr.to+180)}: è la strada che fai in 20 minuti di deriva.</p><p class="note">Stima da vento e corrente: dipende molto dalla barca. Correggila dopo la prima passata.</p></div>`:'')+
     spots.map((s,k)=>`<div class="card spot">
     <span class="num">${k+1}</span>
@@ -1742,6 +1779,7 @@ function renderDiario(){
 const slim=d=>({lat:d.lat,lon:d.lon,R:d.R,ts:Date.now(),met:d.met,structs:d.structs,grid:d.grid?{lats:d.grid.lats,lons:d.grid.lons,z:d.grid.z,cell:d.grid.cell,cx:d.grid.cx,cy:d.grid.cy,est:d.grid.est||null,hr:d.grid.hr||null}:null});
 async function analyze(){
   const run=++state.run;save();
+  const keepT=data&&data.H&&data.H[state.selHour]&&state.selHour>0?data.H[state.selHour].t:null;
   const {lat,lon,R}=state,dLa=R/MLAT,dLo=R/mlon(lat);
   refMarker.setLatLng([lat,lon]);areaRect.setBounds([[lat-dLa,lon-dLo],[lat+dLa,lon+dLo]]);
   setStatus('Carico batimetria, meteo e mare…');
@@ -1756,7 +1794,11 @@ async function analyze(){
   }
   if(met)tzOff=met.off;
   data={lat,lon,R,grid,met,hr:grid&&grid.hr?hr:null,cached,structs:cst,lines:[],areas:[],pending:!cached,sol:solunar(lat,lon,Date.now())};
-  state.selHour=0;drawStatic();render();
+  // giorno e ora scelti restano quelli: cambiano solo se li cambia chi usa la app
+  let keep=0;
+  if(keepT!=null&&met){const k=met.hours.findIndex(h=>h.t===keepT);if(k>0){const keys=[...new Set(met.hours.map(h=>dayKey(h.t)))],dd=keys.indexOf(dayKey(keepT));if(dd>=0&&dd<7){keep=k;state.selDay=dd}}}
+  if(!keep)state.selDay=0;
+  state.selHour=keep;drawStatic();render();
   if(cached)return;
   scheduleView();                                           // il resto della mappa si carica subito, senza aspettare canali e strutture
   let st=await pStruct;                                     // canali e strutture arrivano dopo, senza bloccare la mappa
