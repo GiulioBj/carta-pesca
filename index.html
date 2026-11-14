@@ -102,13 +102,15 @@ body.full #oppanel{top:calc(60px + env(safe-area-inset-top))}
 #instbar[hidden]{display:none}
 #instbar span{flex:1}
 #windcv{position:absolute;inset:0;width:100%;height:100%;z-index:500;pointer-events:none}
-#windbox{position:absolute;right:10px;top:60px;z-index:500;width:80px;box-sizing:border-box;padding:6px 4px 6px;background:var(--card);color:var(--ink);border:2px solid rgba(0,0,0,.25);border-radius:8px;font:500 11px/1.2 var(--body);text-align:center}
-#windbox .cmp{display:block;width:30px;height:30px;margin:0 auto 3px}
-#windbox .wr{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:4px}
-#windbox .ar{width:17px;height:17px;flex:none}
-#windbox b{font:700 14px var(--body);font-variant-numeric:tabular-nums;white-space:nowrap}
-#windbox small{display:block;font-size:10.5px;color:var(--muted)}
-#windbox.off .wr,#windbox.off small{opacity:.6}
+#windbox{position:absolute;right:10px;top:60px;z-index:500;width:80px;box-sizing:border-box;padding:5px 2px 6px;background:var(--bar);color:#fff;border:0;border-radius:12px;font:500 11.5px/1.25 var(--body);text-align:center;box-shadow:0 1px 5px rgba(0,0,0,.4)}
+#windbox svg{display:block;width:70px;height:70px;margin:0 auto 2px}
+#windbox b{font:700 14px var(--display);font-variant-numeric:tabular-nums}
+#windbox .dr{color:#4fc3ff;display:block;margin-top:3px;padding-top:3px;border-top:1px solid rgba(255,255,255,.25)}
+#windbox .dr b{color:#4fc3ff}
+#windbox .wv b{color:#ff9a4d}
+#windbox small{font-size:11px}
+#windbox.off #wb-txt{opacity:.7}
+#windbox [hidden]{display:none}
 body.full #windbox{top:calc(60px + env(safe-area-inset-top))}
 body.full{overflow:hidden}
 body.full .mapbox{position:fixed;inset:0;height:auto;min-height:0;z-index:2000}
@@ -234,7 +236,7 @@ footer a{color:var(--sea)}
 </head>
 <body>
 <header id="hd">
-  <div class="top"><h1>Carta di pesca <small style="font:400 11px var(--body);opacity:.7;text-transform:none">v21</small></h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
+  <div class="top"><h1>Carta di pesca <small style="font:400 11px var(--body);opacity:.7;text-transform:none">v22</small></h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
   <div class="ctl"><select id="spsel" aria-label="Specie da cercare"></select></div>
   <div class="ctl">
     <div class="seg" role="group" aria-label="Da dove peschi">
@@ -256,7 +258,15 @@ footer a{color:var(--sea)}
     <div id="trackbar" hidden><span><b id="trackbig"></b><br><span id="tracktxt"></span></span><button id="trackstop" type="button">Stop</button></div>
     <canvas id="windcv" aria-hidden="true"></canvas>
     <button id="windbox" type="button" aria-pressed="true" aria-label="Bussola e vento: tocca per fermare o riavviare l'animazione">
-      <svg class="cmp" viewBox="-12 -12 24 24" aria-hidden="true"><circle r="11.3" fill="none" stroke="currentColor" stroke-width=".8" opacity=".35"/><path d="M0-9.5L4 0H-4z" fill="#ea4335"/><path d="M0 9.5L4 0H-4z" fill="#b9bdc1"/><circle r="1.3" fill="#fff"/></svg>
+      <svg viewBox="-50 -50 100 100" aria-hidden="true">
+        <circle r="45" fill="rgba(255,255,255,.07)" stroke="rgba(255,255,255,.6)" stroke-width="1.5"/>
+        <g stroke="rgba(255,255,255,.6)" stroke-width="1.5"><path d="M45 0h-6M-45 0h6M0 45v-6"/></g>
+        <path d="M0-48l-6 11h12z" fill="#ff4b3a"/>
+        <text y="-25" text-anchor="middle" font-size="12" font-weight="700" fill="#fff" opacity=".9">N</text>
+        <g id="wb-dr" hidden stroke="#0e2a3b" stroke-width="1.5" stroke-linejoin="round"><path d="M-3.5-2V-22H-11L0-40 11-22H3.5V-2z" fill="#4fc3ff"/></g>
+        <g id="wb-w" hidden stroke="#0e2a3b" stroke-width="1.5" stroke-linejoin="round"><path id="wb-wp" d="" fill="#ff7a1a"/></g>
+        <circle r="3" fill="#fff"/>
+      </svg>
       <span id="wb-txt">vento…</span>
     </button>
     <button id="fs" type="button" aria-pressed="false">Schermo intero</button>
@@ -276,8 +286,8 @@ footer a{color:var(--sea)}
         <span><i class="key rd" style="background:#fff;border:2px solid #0e2a3b"></i>punto toccato</span>
         <span><i class="key" style="background:#f2c200;border:1.5px solid #0e2a3b"></i>punto salvato</span>
         <span><i class="key rd" style="background:#1f8a5b"></i>cattura del diario</span>
-        <span><i class="key ln" style="background:#e8590c"></i>vento: dove va (freccia e scie)</span>
-        <span><i class="key ln" style="background:#1a73e8"></i>scarroccio: dove va la barca</span>
+        <span><i class="key ln" style="background:#e8590c"></i>vento: da dove arriva (freccia) e dove va (scie)</span>
+        <span><i class="key ln" style="background:#4fc3ff"></i>scarroccio: dove va la barca</span>
       </div>
     </div>
     <div id="psheet" hidden><button id="pclose" type="button" aria-label="Chiudi le informazioni sul punto">Chiudi ×</button><div id="pbody"></div></div>
@@ -836,10 +846,10 @@ function tideModel(m,lat,lon){
     // previsione ufficiale dove c'è; prima e dopo la marea astronomica, raccordata con lo scarto dovuto al meteo
     tA=P[0][0];tB=P[P.length-1][0];
     const a0=cosAt(A,tA),a1=cosAt(A,tB),r0=a0==null?0:P[0][1]-a0,r1=a1==null?0:P[P.length-1][1]-a1;
-    for(const e of A)if(e[0]<tA-3*3600)C.push([e[0],e[1]+r0]);
-    for(const e of P)C.push([e[0],e[1]]);
-    for(const e of A)if(e[0]>tB+3*3600)C.push([e[0],e[1]+r1*Math.exp(-(e[0]-tB)/86400)]);
-  }else for(const e of A)C.push([e[0],e[1]]);
+    for(const e of A)if(e[0]<tA-3*3600)C.push([e[0],e[1]+r0,e[2]]);
+    for(const e of P)C.push([e[0],e[1],e[2]]);
+    for(const e of A)if(e[0]>tB+3*3600)C.push([e[0],e[1]+r1*Math.exp(-(e[0]-tB)/86400),e[2]]);
+  }else for(const e of A)C.push([e[0],e[1],e[2]]);
   const ps=t=>cosAt(C,t);
   // l'ultima misura della stazione corregge la curva, con un effetto che si spegne in qualche ora
   let bias=0,tm=null,mv=null;
@@ -851,7 +861,8 @@ function tideModel(m,lat,lon){
   let inl=null;for(const [n,la,lo] of INLETS){const dd=dist(lat,lon,la,lo);if(!inl||dd<inl.d)inl={n,la,lo,d:dd}}
   const sea=SEA_ST.includes(sid),inside=!sea||(inl.d<2500&&lon<inl.lo),mouth=sea&&!inside&&inl.d<3000;
   const brg=(Math.atan2((lon-inl.lo)*mlon(inl.la),(lat-inl.la)*MLAT)/RAD+360)%360;      // dalla bocca verso il punto
-  return {name,d:best.d,lag,k,cal:ncal>0,inside,mouth,inl,brg,at,meas:tm==null?null:{t:tm*1000,cm:mv},prevT:m.prev?m.prev.t*1000:null,gen:m.gen*1000};
+  const ext=C.map(e=>({t:(e[0]+lag*60)*1000,hi:!!e[2]})),astroEx=A.map(e=>({t:(e[0]+lag*60)*1000,hi:!!e[2]}));
+  return {name,d:best.d,lag,k,cal:ncal>0,inside,mouth,inl,brg,at,ext,astroEx,meas:tm==null?null:{t:tm*1000,cm:mv},prevT:m.prev?m.prev.t*1000:null,gen:m.gen*1000};
 }
 function applyTide(met,m,lat,lon){
   if(!met||met.tideDone)return;
@@ -869,13 +880,16 @@ function applyTide(met,m,lat,lon){
       if(a1&&a0){const rate=(a1.v-a0.v)*100;h.cur=Math.min(3.5,Math.abs(rate)*g);h.curdir=rate>=0?inward:(inward+180)%360;h.curEst=true;h.curIn=rate>=0}
     }
   });
+  // massimi e minimi al minuto, non arrotondati all'ora
+  met.tideEx=tm.ext.map(e=>{const a=tm.at(e.t);return a?{t:e.t,v:a.v,hi:e.hi,src:a.src}:null}).filter(Boolean);met.astroEx=tm.astroEx;
   met.tide={name:tm.name,d:tm.d,lag:tm.lag,cal:tm.cal,inside:tm.inside,meas:tm.meas,prevT:tm.prevT,gen:tm.gen,inlet:tm.inl.n,cur:tm.inside||tm.mouth};
   // Temperatura dell'acqua misurata: in laguna quella di Punta Salute, in mare quella della piattaforma. Corregge il modello, che vale per il mare aperto.
   const now=Date.now()/1000,tq=(m.tacqua||[]).filter(x=>now-x[3]<3*3600).map(x=>({d:dist(lat,lon,x[1],x[2]),v:x[4],n:x[0],plat:/piattaforma/i.test(x[0])}));
-  const pick=tq.filter(x=>tm.inside?!x.plat:x.plat).sort((a,b)=>a.d-b.d)[0],h0=met.hours[0];
-  if(pick&&pick.d<35000&&h0){
-    if(h0.sst!=null){const off=pick.v-h0.sst;met.hours.forEach((h,i)=>{if(h.sst!=null){h.sstModel=h.sst;h.sst=h.sst+off*Math.exp(-i/72)}});met.sstMeas={v:pick.v,n:pick.n}}
-    else{met.hours.forEach((h,i)=>{if(h.sst==null&&i<48)h.sst=pick.v});met.sstMeas={v:pick.v,n:pick.n}}
+  const pick=tq.sort((a,b)=>a.d-b.d)[0],h0=met.hours[0];
+  if(pick&&h0){
+    if(pick.d>12000)met.sstFar={v:pick.v,n:pick.n,d:pick.d};          // troppo lontana per valere qui: la mostro solo come riferimento
+    else if(h0.sst!=null){const off=pick.v-h0.sst;met.hours.forEach((h,i)=>{if(h.sst!=null){h.sstModel=h.sst;h.sst=h.sst+off*Math.exp(-i/72)}});met.sstMeas={v:pick.v,n:pick.n,d:pick.d}}
+    else{met.hours.forEach((h,i)=>{if(h.sst==null&&i<48)h.sst=pick.v});met.sstMeas={v:pick.v,n:pick.n,d:pick.d}}
   }
 }
 async function loadMeteo(lat,lon){
@@ -1205,6 +1219,8 @@ function weekOutlook(H){
   });
 }
 function tideExtremes(H){
+  const X=data&&data.met&&data.met.tideEx;
+  if(X&&X.length&&H.length&&H[0].levSrc)return X.filter(e=>e.t>=H[0].t&&e.t<=H[H.length-1].t+36e5);
   const out=[];
   for(let i=1;i<H.length-1;i++){
     const a=H[i-1].level,b=H[i].level,c=H[i+1].level;if(a==null||b==null||c==null)continue;
@@ -1590,7 +1606,7 @@ function pointInfo(la,lo){
   const b=bearing(d.lat,d.lon,la,lo),rt=g&&state.mode==='barca'&&ce?routeMin(g,d.lat,d.lon,la,lo,h.level==null?0:h.level):null;
   rows.push(`Dal punto target: ${kmLabel(dist(d.lat,d.lon,la,lo))} verso ${card(b)} (${n0(b)}°)${rt?'; '+routeTxt(rt):''}`);
   const el=document.createElement('div');el.className='pinfo';
-  el.innerHTML=`<b>${state.selDay===0?'Oggi':dayName(h.t)}, ore ${hh(h.t)}</b>${rows.map(r=>'<div>'+r+'</div>').join('')}<small>${coord(la,lo)}</small>
+  el.innerHTML=`<b>${dayKey(h.t)===dayKey(Date.now())?'Oggi':dayName(h.t)}, ore ${hh(h.t)}</b>${rows.map(r=>'<div>'+r+'</div>').join('')}<small>${coord(la,lo)}</small>
     <div class="acts"><button class="btn pri" type="button" data-pa="set">Metti qui il target</button><button class="btn" type="button" data-pa="go">Portami lì</button><a class="btn" data-pa="fav" href="${gmaps(la,lo)}" target="_blank" rel="noopener">Salva</a><a class="btn" href="${gmaps(la,lo)}" target="_blank" rel="noopener">Google Maps</a></div>`;
   el.querySelector('[data-pa="go"]').onclick=()=>{closeInfo();track(la,lo,'Punto scelto')};
   el.querySelector('[data-pa="set"]').onclick=()=>{closeInfo();setPoint(la,lo,false)};
@@ -1764,11 +1780,13 @@ function windRun(){
   else{cancelAnimationFrame(WIND.raf);WIND.raf=0;const c=$('#windcv');c.getContext('2d').clearRect(0,0,c.width,c.height)}
 }
 function setWind(h){
-  WIND.h=h;const ok=h&&h.wind!=null&&h.wdir!=null,dr=h?drift(h):null,on=state.wind!==false,showDr=!!(dr&&dr.kn>=.05&&state.mode==='barca');
-  // due righe: freccia arancione = dove va il vento, freccia blu = dove va la barca
-  const ar=(deg,col)=>`<svg class="ar" viewBox="-10 -10 20 20" style="transform:rotate(${Math.round(deg)}deg)" aria-hidden="true"><path d="M0-9L6.5 7.5 0 3.8-6.5 7.5z" fill="${col}"/></svg>`;
-  $('#wb-txt').innerHTML=!ok?'<small>vento non disponibile</small>':(h.wind<1?'<span class="wr"><b>calma</b></span>':`<span class="wr">${ar(h.wdir+180,'#e8590c')}<b>${n0(h.wind)} kn</b></span><small>vento da ${card(h.wdir)}</small>`)
-    +(showDr?`<span class="wr">${ar(dr.to,'#1a73e8')}<b>${n1(dr.kn)} kn</b></span><small>scarroccio ${card(dr.to)}</small>`:'');
+  WIND.h=h;const g=$('#wb-w'),gd=$('#wb-dr'),ok=h&&h.wind!=null&&h.wdir!=null,dr=h?drift(h):null,on=state.wind!==false;
+  const showDr=!!(dr&&dr.kn>=.05&&state.mode==='barca');
+  // vento: freccia arancione che arriva dal bordo, da dove soffia, fino al centro; scarroccio: freccia azzurra che parte dal centro verso dove va la barca
+  if(ok&&h.wind>=1){g.removeAttribute('hidden');g.setAttribute('transform','rotate('+(h.wdir%360)+')');
+    $('#wb-wp').setAttribute('d',showDr?'M-3.5-40V-20H-11L0-3 11-20H3.5V-40z':'M-3.5-40V14H-11L0 34 11 14H3.5V-40z')}else g.setAttribute('hidden','');
+  if(showDr){gd.removeAttribute('hidden');gd.setAttribute('transform','rotate('+dr.to+')')}else gd.setAttribute('hidden','');
+  $('#wb-txt').innerHTML=!ok?'vento non disponibile':(h.wind<1?'<b>calma</b>':`<span class="wv"><b>${n0(h.wind)} kn</b> da ${card(h.wdir)}</span>`+(h.gust!=null?`<br><small>raffiche ${n0(h.gust)}</small>`:''))+(showDr?`<span class="dr"><small>scarroccio</small><br><b>${n1(dr.kn)} kn</b> → ${card(dr.to)}</span>`:'');
   const b=$('#windbox');b.classList.toggle('off',!on);b.setAttribute('aria-pressed',on);$('#ly-wind').checked=on;
   windRun();
 }
@@ -1793,11 +1811,17 @@ function initWind(){
   addEventListener('resize',rs);map.on('resize',rs);
   document.addEventListener('visibilitychange',windRun);
 }
+const todayLab=()=>data&&data.days&&data.days[0]&&data.days[0].ext?'le prossime 24 ore':'oggi';
+// ora con il giorno accanto quando non è più oggi
+const hDay=t=>hh(t)+(dayKey(t)!==dayKey(Date.now())?' '+dayName(t):'');
 function render(){
   const d=data;if(!d)return;
   const S=SPECIES[state.sp],H=buildHours(d,state.sp);
   const days=[];H.forEach((x,i)=>{const k=dayKey(x.t);let dd=days[days.length-1];if(!dd||dd.key!==k){dd={key:k,t:x.t,idx:[]};days.push(dd)}dd.idx.push(i)});
   d.days=days.slice(0,7);if(state.selDay>=d.days.length)state.selDay=0;
+  // "Oggi" mostra sempre 24 ore a partire da adesso: la sera non restano due sole barre, si continua nella notte e nel mattino dopo
+  const d0=d.days[0];
+  if(d0&&d0.idx.length<24){for(let i=d0.idx[d0.idx.length-1]+1;i<H.length&&d0.idx.length<24;i++)d0.idx.push(i);d0.ext=true}
   const day=d.days[state.selDay];
   if(!day.idx.includes(state.selHour))state.selHour=state.selDay===0?day.idx[0]:day.idx.reduce((a,b)=>H[b].score>H[a].score?b:a);
   $('#days').innerHTML=d.days.map((x,i)=>`<button type="button" class="opt" data-d="${i}" aria-pressed="${i===state.selDay}">${i===0?'Oggi':dayName(x.t)}</button>`).join('');
@@ -1866,6 +1890,23 @@ function tideNote(d,h){
     +(t.cur?'La corrente è una stima dal ritmo della marea e dalla distanza dalla bocca di '+t.inlet+'. ':'')
     +'Non per la navigazione. Dati: Centro Previsioni e Segnalazioni Maree, Comune di Venezia.';
 }
+// quando la previsione ufficiale si scosta dalle tabelle astronomiche lo dico, con gli orari delle tabelle
+function astroCmp(d,ex){
+  const A=d.met&&d.met.astroEx;if(!A||!ex.length)return '';
+  const rows=ex.filter(e=>e.src==='prev').slice(0,4).map(e=>{const a=A.filter(x=>x.hi===e.hi&&Math.abs(x.t-e.t)<4*36e5).sort((x,y)=>Math.abs(x.t-e.t)-Math.abs(y.t-e.t))[0];return a&&Math.abs(a.t-e.t)>=20*6e4?(e.hi?'alta ':'bassa ')+hh(a.t)+' invece di '+hh(e.t):null}).filter(Boolean);
+  return rows.length?`<p style="margin:6px 0 0"><b>Diverso dalle tabelle di marea.</b> Le tabelle (solo Luna e Sole) darebbero ${rows.join(', ')}. Qui vale la previsione del Centro Maree, che tiene conto di vento e pressione.</p>`:'';
+}
+// misure reali più vicine al target, con la distanza: così si vede subito quanto valgono per quel punto
+function measCard(d){
+  const m=d.met,t=m&&m.tide;if(!t)return '';
+  const li=[];
+  if(t.meas)li.push(`<li>Livello: <b>${t.meas.cm>=0?'+':''}${Math.round(t.meas.cm)} cm</b> alle ${hh(t.meas.t)}, stazione ${esc(t.name)} a <b>${kmLabel(t.d)}</b> dal target.</li>`);
+  if(m.sstMeas)li.push(`<li>Acqua: <b>${n1(m.sstMeas.v,' °C')}</b>, stazione ${esc(m.sstMeas.n)} a <b>${kmLabel(m.sstMeas.d)}</b>.</li>`);
+  else if(m.sstFar)li.push(`<li>Acqua: la misura più vicina è a ${kmLabel(m.sstFar.d)} (${esc(m.sstFar.n)}, ${n1(m.sstFar.v,' °C')}): troppo lontana, <b>non la uso</b>. Qui vale il modello del mare.</li>`);
+  else li.push('<li>Acqua: nessuna misura disponibile vicino al target. Vale il modello del mare.</li>');
+  if(m.windMeas)li.push(`<li>Vento: <b>${n0(m.windMeas.kn,' kn')} da ${card(m.windMeas.dir)}</b>${m.windMeas.gust!=null?', raffica '+n0(m.windMeas.gust,' kn'):''} alle ${hh(m.windMeas.t)}, stazione ${esc(m.windMeas.n)} a <b>${kmLabel(m.windMeas.d)}</b>.</li>`);
+  return li.length?`<div class="card"><h3>Misure vicino al target</h3><ul>${li.join('')}</ul><p class="note">Stazioni del Centro Maree di Venezia, aggiornate ogni mezz'ora. Uso una misura solo se la stazione è entro 12 km dal target (25 km per il livello).</p></div>`:'';
+}
 // perché quel punteggio: quanto dà ogni voce sul suo massimo
 function whyCard(h,S){
   if(!h||!h.parts)return '';
@@ -1892,7 +1933,7 @@ function hourInfo(h){
   return p.join(' · ');
 }
 function renderPiano(H,S){
-  const p=$('#p-piano'),d=data,dy=d.days[state.selDay],ix=dy.idx,H2=ix.map(i=>H[i]),W=windows(H2),mx=Math.max(...H2.map(h=>h.score)),dlab=state.selDay===0?'oggi':dayName(dy.t);
+  const p=$('#p-piano'),d=data,dy=d.days[state.selDay],ix=dy.idx,H2=ix.map(i=>H[i]),W=windows(H2),mx=Math.max(...H2.map(h=>h.score)),dlab=state.selDay===0?todayLab():dayName(dy.t);
   const cls=h=>h.score>=Math.max(.85*mx,mx-12)?'hi':h.score>=.65*mx?'mid':'';
   const plan=W.map(w=>{
     const h=H2[w.best],sp=rankLive(d.spots.map(s=>Object.assign({},s)),S,h)[0],a=advise(state.sp,h,sp?sp.dep:d.refDep);
@@ -1953,12 +1994,12 @@ function renderMare(H,d){
   const sun=SunCalc.getTimes(new Date(Hd[Hd.length>>1].t),d.lat,d.lon),ok=x=>x&&!isNaN(x)?hh(x.getTime()):'n.d.';
   const tile=(l,v,s)=>`<div class="tile"><span>${l}</span><b>${v}</b><i>${s||'&nbsp;'}</i></div>`;
   const ex=tideExtremes(H2).slice(0,6),opt=(arr,cur,u)=>arr.map(v=>`<option value="${v}"${v===cur?' selected':''}>${String(v).replace('.',',')} ${u}</option>`).join('');
-  p.innerHTML=`<div class="card now"><h3>Condizioni ${state.selDay===0&&state.selHour===0?'adesso':dayName(n.t)+' alle '+hh(n.t)}</h3><label class="note" for="mh">Ora</label><select id="mh" class="inl">${ix.map(i=>`<option value="${i}"${i===state.selHour?' selected':''}>${hh(H[i].t)} · ${H[i].light}</option>`).join('')}</select></div>
-  ${wxCard(Hd,'Previsioni meteo, '+(state.selDay===0?'oggi':dayName(dy.t)))}
+  p.innerHTML=`<div class="card now"><h3>Condizioni ${state.selDay===0&&state.selHour===0?'adesso':dayName(n.t)+' alle '+hh(n.t)}</h3><label class="note" for="mh">Ora</label><select id="mh" class="inl">${ix.map(i=>`<option value="${i}"${i===state.selHour?' selected':''}>${state.selDay===0?hDay(H[i].t):hh(H[i].t)} · ${H[i].light}</option>`).join('')}</select></div>
+  ${wxCard(Hd,'Previsioni meteo, '+(state.selDay===0?todayLab():dayName(dy.t)))}
   <div class="tiles">
     ${tile('Vento',n0(n.wind,' kn'),n.wind==null?'':'da '+card(n.wdir)+', raffiche '+n0(n.gust,' kn')+(n.conf===0?'; modelli in disaccordo':''))}
     ${tile('Onda',n1(n.wave,' m'),n.wave==null?'':'periodo '+n0(n.waveper,' s')+', da '+card(n.wavedir))}
-    ${tile('Acqua',n1(n.sst,' °C'),d.met.sstMeas?'misurata: '+n1(d.met.sstMeas.v,' °C')+' a '+esc(d.met.sstMeas.n):n.dsst==null?'in superficie':(n.dsst>=0?'+':'')+n1(n.dsst,' °C')+' in 24 ore')}
+    ${tile('Acqua',n1(n.sst,' °C'),d.met.sstMeas?'corretta con la misura a '+kmLabel(d.met.sstMeas.d)+' ('+esc(d.met.sstMeas.n)+')':'modello del mare vicino al target'+(n.dsst==null?'':', '+(n.dsst>=0?'+':'')+n1(n.dsst,' °C')+' in 24 ore'))}
     ${tile('Limpidezza',CLAR_LABEL[n.clar],clarityWhy(n))}
     ${tile('Corrente',n1(n.cur,' kn'),n.cur==null?'':n.curEst?(n.curIn?'entrante':'uscente')+', verso '+card(n.curdir)+' (stima)':'verso '+card(n.curdir))}
     ${tile('Pressione',n0(n.pres,' hPa'),n.dp3==null?'':n.dp3>.8?'in aumento':n.dp3<-.8?'in calo: spesso il pesce mangia':'stabile')}
@@ -1967,8 +2008,10 @@ function renderMare(H,d){
   </div>
   <div class="card"><h3>Marea e livello del mare</h3>${tideSvg(H2)||'<p>Livello del mare non disponibile per questo punto.</p>'}
     ${ex.length?'<p style="margin:6px 0 0">'+ex.map(e=>`${e.hi?'Alta':'Bassa'} <b>${dayName(e.t)} ${hh(e.t)}</b>`).join(' · ')+'</p>':''}
+    ${astroCmp(d,ex)}
     <p class="note">${tideNote(d,n)}</p></div>
-  <div class="card"><h3>Ora per ora, ${state.selDay===0?'oggi':dayName(dy.t)}</h3><div class="scroll"><table><thead><tr><th>Ora</th><th>Vento kn</th><th>Raffica</th><th>Onda m</th><th>Acqua °C</th><th>Pioggia mm</th><th>hPa</th></tr></thead><tbody>
+  ${measCard(d)}
+  <div class="card"><h3>Ora per ora, ${state.selDay===0?todayLab():dayName(dy.t)}</h3><div class="scroll"><table><thead><tr><th>Ora</th><th>Vento kn</th><th>Raffica</th><th>Onda m</th><th>Acqua °C</th><th>Pioggia mm</th><th>hPa</th></tr></thead><tbody>
     ${Hd.filter((h,i)=>i%2===0).map(h=>`<tr><td>${hh(h.t)}</td><td>${n0(h.wind)} ${card(h.wdir)}</td><td>${n0(h.gust)}</td><td>${n1(h.wave)}</td><td>${n1(h.sst)}</td><td>${n1(h.rain)}</td><td>${n0(h.pres)}</td></tr>`).join('')}
   </tbody></table></div></div>`;
   $('#mh').onchange=e=>{state.selHour=+e.target.value;render()};
@@ -2138,7 +2181,7 @@ function fsInfo(){
   if(!data||!data.H||!data.days)return;
   const H=data.H,h=H[state.selHour]||H[0];
   $('#mapday').innerHTML=data.days.map((x,i)=>`<option value="${i}"${i===state.selDay?' selected':''}>${i===0?'Oggi':dayName(x.t)}</option>`).join('');
-  $('#maphour').innerHTML=data.days[state.selDay].idx.map(i=>`<option value="${i}"${i===state.selHour?' selected':''}>ore ${hh(H[i].t)}</option>`).join('');
+  $('#maphour').innerHTML=data.days[state.selDay].idx.map(i=>`<option value="${i}"${i===state.selHour?' selected':''}>ore ${state.selDay===0?hDay(H[i].t):hh(H[i].t)}</option>`).join('');
   $('#mapscore').textContent=h.score;$('#mapscore').title='Attività '+h.score+' su 100';
 }
 function syncControls(){

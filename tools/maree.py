@@ -16,10 +16,13 @@ SOLARE = timezone(timedelta(hours=1))          # ora solare: livelli misurati e 
 ROMA = ZoneInfo('Europe/Rome')                 # ora corrente: previsione
 PS = '1025'                                    # Punta Salute Canal Grande: riferimento della previsione
 STORIA_ORE = 72
-# Ritardo (minuti) e ampiezza rispetto a Punta Salute usati finché non ci sono abbastanza misure: valori indicativi.
-BASE_ST = {'1021': (-70, 1.05), '1022': (-60, 1.04), '1023': (-60, 1.04), '1024': (-60, 1.04), '1033': (-35, 1.0),
-           '1036': (-35, 1.0), '1032': (-30, 1.0), '1025': (0, 1.0), '1045': (0, 1.0), '1029': (10, 1.0),
-           '1001': (10, 1.0), '1037': (15, 1.0), '1030': (30, .95), '1028': (60, .9)}
+# Ritardo (minuti) e ampiezza rispetto a Punta Salute usati finché non ci sono abbastanza misure.
+# Ritardi medi pubblicati dal Centro Maree e da ISPRA ("La propagazione della marea in laguna", fascicolo previsioni 2026):
+# Piattaforma -56, Malamocco diga nord -54, Lido diga sud -51, Chioggia diga sud -54, interno bocca di Chioggia -21,
+# Chioggia Vigo -20, Burano +32. Le altre stazioni (Malamocco porto, Fusina, Saline, Misericordia, San Geremia) sono stime.
+BASE_ST = {'1021': (-56, 1.03), '1022': (-51, 1.02), '1023': (-54, 1.02), '1024': (-54, 1.02), '1033': (-21, 1.0),
+           '1036': (-20, 1.0), '1032': (-25, 1.0), '1025': (0, 1.0), '1045': (0, 1.0), '1029': (5, 1.0),
+           '1001': (5, 1.0), '1037': (10, 1.0), '1030': (32, .95), '1028': (55, .88)}
 
 
 def leggi(nome, cartella=None):
@@ -198,6 +201,11 @@ def main():
             continue
         tq.append([r.get('stazione', ''), la, lo, ts(r['data'], SOLARE), v])
     out['tacqua'] = tq
+
+    # vento misurato: per ora copio il file così com'è, per leggerne il formato
+    v = leggi('vento.json', cartella)
+    if v is not None:
+        out['vento_raw'] = v
 
     with open(uscita, 'w', encoding='utf-8') as f:
         json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
