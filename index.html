@@ -190,6 +190,9 @@ th{font-weight:600;color:var(--muted);font-size:12.5px}
 .day:last-child{border:0}
 .meter{height:10px;border-radius:5px;background:var(--low);overflow:hidden}
 .meter i{display:block;height:100%;background:var(--sea);border-radius:5px}
+.why{display:grid;grid-template-columns:1fr 64px 46px;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line);font-size:14px}
+.why small{display:block;color:var(--muted);font-size:12.5px;line-height:1.25}
+.why b{text-align:right;font-variant-numeric:tabular-nums}
 .col{display:grid;grid-template-columns:76px 1fr;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
 .col:last-child{border:0}
 .sw{width:76px;height:28px}
@@ -233,7 +236,7 @@ footer a{color:var(--sea)}
 </head>
 <body>
 <header id="hd">
-  <div class="top"><h1>Carta di pesca <small style="font:400 11px var(--body);opacity:.7;text-transform:none">v19</small></h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
+  <div class="top"><h1>Carta di pesca <small style="font:400 11px var(--body);opacity:.7;text-transform:none">v20</small></h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
   <div class="ctl"><select id="spsel" aria-label="Specie da cercare"></select></div>
   <div class="ctl">
     <div class="seg" role="group" aria-label="Da dove peschi">
@@ -321,7 +324,7 @@ footer a{color:var(--sea)}
     <section class="pane" id="p-diario"></section>
     <footer>
       © 2026 Giulio Bojan · Tutti i diritti riservati: codice e contenuti non possono essere copiati o riutilizzati senza autorizzazione.<br>
-      Dati: batimetria <a href="https://emodnet.ec.europa.eu/en/bathymetry">EMODnet</a> (mari europei, griglia ~115 m) e, per la laguna di Venezia, rilievo ad alta risoluzione EMODnet HRSM di Deltares (2022) con il multibeam dei canali del CNR-ISMAR (2013), celle da circa 12 m, meteo e mare <a href="https://open-meteo.com">Open-Meteo</a>, strutture <a href="https://www.openstreetmap.org">OpenStreetMap</a>. Spot, attività, limpidezza dell'acqua e scarroccio sono stime calcolate: non sostituiscono carta nautica, ecoscandaglio e bollettino ufficiale. Il livello del mare viene da un modello a 8 km ed è indicativo: per la laguna fai riferimento alle previsioni del Centro Maree del Comune di Venezia. I bassi fondali segnati non garantiscono la navigabilità: in laguna valgono bricole, canali segnati e carta ufficiale. Verifica sempre divieti locali (porti, aree marine protette, ordinanze della Capitaneria), taglie minime e limiti di cattura in vigore.
+      Dati: batimetria <a href="https://emodnet.ec.europa.eu/en/bathymetry">EMODnet</a> (mari europei, griglia ~115 m) e, per la laguna di Venezia, rilievo ad alta risoluzione EMODnet HRSM di Deltares (2022) con il multibeam dei canali del CNR-ISMAR (2013), celle da circa 12 m, meteo e mare <a href="https://open-meteo.com">Open-Meteo</a>, strutture <a href="https://www.openstreetmap.org">OpenStreetMap</a>. Spot, attività, limpidezza dell'acqua e scarroccio sono stime calcolate: non sostituiscono carta nautica, ecoscandaglio e bollettino ufficiale. In laguna di Venezia la marea usa, quando sono disponibili, la previsione e le misure del Centro Previsioni e Segnalazioni Maree del Comune di Venezia (dati.venezia.it, licenza CC BY); altrove e in mancanza un modello a 8 km, indicativo. Corrente nei canali, limpidezza e affidabilità della previsione sono stime. I bassi fondali segnati non garantiscono la navigabilità: in laguna valgono bricole, canali segnati e carta ufficiale. Verifica sempre divieti locali (porti, aree marine protette, ordinanze della Capitaneria), taglie minime e limiti di cattura in vigore.
     </footer>
     <nav class="tabs" role="tablist">
       <button role="tab" data-t="spot">Spot</button>
@@ -806,24 +809,105 @@ async function metNo(lat,lon,times,off){
   }
   return {utc_offset_seconds:off,hourly:H};
 }
+/* ---------- Marea reale in laguna: previsione ufficiale e misure del Centro Maree di Venezia ----------
+   Il file maree.json viene preparato ogni mezz'ora da tools/maree.py (ramo "dati" del repository). Contiene massimi e minimi
+   previsti a Punta Salute, la marea astronomica dei giorni successivi, i livelli misurati e, per ogni stazione, ritardo e
+   ampiezza rispetto a Punta Salute. Livelli in cm sullo zero mareografico di Punta della Salute; qui li riporto al livello medio. */
+const MAREE_URL='https://raw.githubusercontent.com/GiulioBj/carta-pesca/dati/maree.json';
+const SEA_ST=['1021','1022','1023','1024'];
+const INLETS=[['Lido',45.432,12.405],['Malamocco',45.337,12.318],['Chioggia',45.232,12.298]];
+let mareeC=null;
+async function loadMaree(){
+  if(mareeC&&Date.now()-mareeC.at<15*6e4)return mareeC.m;
+  let m=null;
+  try{const r=await fetch(MAREE_URL,{cache:'no-store'});if(r.ok){m=await r.json();store.set('cartapesca_maree',m)}}catch(e){}
+  if(!m){m=store.get('cartapesca_maree',null);if(m&&!(m.gen>Date.now()/1000-48*3600))m=null}
+  mareeC={at:Date.now(),m};return m;
+}
+// curva a mezzo coseno tra estremi consecutivi [[t,v],…]; null fuori dall'intervallo
+function cosAt(E,t){
+  let lo=0,hi=E.length-1;if(hi<1||t<E[0][0]||t>E[hi][0])return null;
+  while(hi-lo>1){const mid=(lo+hi)>>1;if(E[mid][0]<=t)lo=mid;else hi=mid}
+  const a=E[lo],b=E[hi];return a[1]+(b[1]-a[1])*(1-Math.cos(Math.PI*(t-a[0])/(b[0]-a[0])))/2;
+}
+function tideModel(m,lat,lon){
+  if(!m||!m.st||!m.st.length||m.z0==null)return null;
+  const A=m.astro||[],P=m.prev&&m.prev.e||[];
+  if(P.length<2&&A.length<4)return null;
+  let best=null;for(const st of m.st){const dd=dist(lat,lon,st[2],st[3]);if(!best||dd<best.d)best={d:dd,s:st}}
+  if(!best||best.d>25000)return null;                       // fuori dalla laguna e dal suo litorale resta il modello
+  const sid=best.s[0],name=best.s[1],lag=best.s[4],k=best.s[5],ncal=best.s[7],z0=m.z0,C=[];
+  let tA=Infinity,tB=-Infinity;
+  if(P.length>=2){
+    // previsione ufficiale dove c'è; prima e dopo la marea astronomica, raccordata con lo scarto dovuto al meteo
+    tA=P[0][0];tB=P[P.length-1][0];
+    const a0=cosAt(A,tA),a1=cosAt(A,tB),r0=a0==null?0:P[0][1]-a0,r1=a1==null?0:P[P.length-1][1]-a1;
+    for(const e of A)if(e[0]<tA-3*3600)C.push([e[0],e[1]+r0]);
+    for(const e of P)C.push([e[0],e[1]]);
+    for(const e of A)if(e[0]>tB+3*3600)C.push([e[0],e[1]+r1*Math.exp(-(e[0]-tB)/86400)]);
+  }else for(const e of A)C.push([e[0],e[1]]);
+  const ps=t=>cosAt(C,t);
+  // l'ultima misura della stazione corregge la curva, con un effetto che si spegne in qualche ora
+  let bias=0,tm=null,mv=null;
+  const Lv=(m.liv||[]).find(x=>x[0]===sid);
+  if(Lv&&Date.now()/1000-Lv[4]<2*3600){const q=ps(Lv[4]-lag*60);if(q!=null){bias=Math.max(-40,Math.min(40,Lv[5]*100-(z0+k*(q-z0))));tm=Lv[4];mv=Lv[5]*100}}
+  const at=ms=>{const t=ms/1000,q=ps(t-lag*60);if(q==null)return null;
+    const b=tm==null?0:bias*Math.exp(-Math.abs(t-tm)/(6*3600));
+    return {v:(k*(q-z0)+b)/100,src:t-lag*60>=tA&&t-lag*60<=tB?'prev':'astro'}};
+  let inl=null;for(const [n,la,lo] of INLETS){const dd=dist(lat,lon,la,lo);if(!inl||dd<inl.d)inl={n,la,lo,d:dd}}
+  const sea=SEA_ST.includes(sid),inside=!sea||(inl.d<2500&&lon<inl.lo),mouth=sea&&!inside&&inl.d<3000;
+  const brg=(Math.atan2((lon-inl.lo)*mlon(inl.la),(lat-inl.la)*MLAT)/RAD+360)%360;      // dalla bocca verso il punto
+  return {name,d:best.d,lag,k,cal:ncal>0,inside,mouth,inl,brg,at,meas:tm==null?null:{t:tm*1000,cm:mv},prevT:m.prev?m.prev.t*1000:null,gen:m.gen*1000};
+}
+function applyTide(met,m,lat,lon){
+  if(!met||met.tideDone)return;
+  met.tideDone=true;met.tide=null;
+  const tm=tideModel(m,lat,lon);if(!tm)return;
+  const lv=met.hours.map(h=>tm.at(h.t));
+  if(!lv.length||lv.some(a=>!a))return;                     // o tutta la serie o niente: niente salti tra fonti diverse
+  // Corrente stimata: proporzionale alla velocità con cui cambia il livello, più forte vicino alla bocca di porto.
+  // Montante entra (dalla bocca verso l'interno), calante esce. È una stima: i canali la deviano e la concentrano.
+  const g=tm.inl.d<=1500?.11:tm.inl.d>=8000?.03:.11-(tm.inl.d-1500)/6500*.08,inward=tm.inside?tm.brg:(tm.brg+180)%360;
+  met.hours.forEach((h,i)=>{
+    h.levelModel=h.level;h.level=lv[i].v;h.levSrc=lv[i].src;h.inLag=tm.inside;
+    if(tm.inside||tm.mouth){
+      const a1=tm.at(h.t+18e5),a0=tm.at(h.t-18e5);
+      if(a1&&a0){const rate=(a1.v-a0.v)*100;h.cur=Math.min(3.5,Math.abs(rate)*g);h.curdir=rate>=0?inward:(inward+180)%360;h.curEst=true;h.curIn=rate>=0}
+    }
+  });
+  met.tide={name:tm.name,d:tm.d,lag:tm.lag,cal:tm.cal,inside:tm.inside,meas:tm.meas,prevT:tm.prevT,gen:tm.gen,inlet:tm.inl.n,cur:tm.inside||tm.mouth};
+  // Temperatura dell'acqua misurata: in laguna quella di Punta Salute, in mare quella della piattaforma. Corregge il modello, che vale per il mare aperto.
+  const now=Date.now()/1000,tq=(m.tacqua||[]).filter(x=>now-x[3]<3*3600).map(x=>({d:dist(lat,lon,x[1],x[2]),v:x[4],n:x[0],plat:/piattaforma/i.test(x[0])}));
+  const pick=tq.filter(x=>tm.inside?!x.plat:x.plat).sort((a,b)=>a.d-b.d)[0],h0=met.hours[0];
+  if(pick&&pick.d<35000&&h0){
+    if(h0.sst!=null){const off=pick.v-h0.sst;met.hours.forEach((h,i)=>{if(h.sst!=null){h.sstModel=h.sst;h.sst=h.sst+off*Math.exp(-i/72)}});met.sstMeas={v:pick.v,n:pick.n}}
+    else{met.hours.forEach((h,i)=>{if(h.sst==null&&i<48)h.sst=pick.v});met.sstMeas={v:pick.v,n:pick.n}}
+  }
+}
 async function loadMeteo(lat,lon){
   const q=`latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&timeformat=unixtime&timezone=auto&forecast_days=7&past_days=2`;
   const js=u=>fetch(u).then(r=>r.ok?r.json():Promise.reject(new Error('http')));
   const fu='https://api.open-meteo.com/v1/forecast?'+q+'&wind_speed_unit=kn&hourly=temperature_2m,precipitation,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m';
   const mu='https://marine-api.open-meteo.com/v1/marine?'+q+'&cell_selection=sea&hourly=wave_height,wave_direction,wave_period';
-  let [F,M]=await Promise.all([
+  // secondo modello meteo, indipendente dal primo: serve solo a dire quanto fidarsi della previsione del vento
+  const fu2='https://api.open-meteo.com/v1/forecast?'+q+'&wind_speed_unit=kn&models=gfs_seamless&hourly=wind_speed_10m,wind_direction_10m';
+  let [F,M,F2]=await Promise.all([
     js(fu+',precipitation_probability,weather_code').catch(()=>js(fu).catch(()=>new Promise(r=>setTimeout(r,1500)).then(()=>js(fu)).catch(()=>null))),
-    js(mu+',sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction').catch(()=>js(mu).catch(()=>null))
+    js(mu+',sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction').catch(()=>js(mu).catch(()=>null)),
+    js(fu2).catch(()=>null)
   ]);
   if(!F){try{F=await metNo(lat,lon,M&&M.hourly?M.hourly.time:null,M?M.utc_offset_seconds||0:tzOff)}catch(e){F=null}}
   const src=F||M;if(!src||!src.hourly||!src.hourly.time)return null;
   const off=src.utc_offset_seconds||0,times=src.hourly.time,now=Date.now()/1000;
   let s=times.findIndex(t=>t+3600>now);if(s<0)s=0;
   const mi={};if(M&&M.hourly)M.hourly.time.forEach((t,i)=>mi[t]=i);
+  const f2={},h2=F2&&F2.hourly,w2=h2&&(h2.wind_speed_10m||h2.wind_speed_10m_gfs_seamless),d2=h2&&(h2.wind_direction_10m||h2.wind_direction_10m_gfs_seamless);
+  if(h2&&h2.time&&w2)h2.time.forEach((t,i)=>f2[t]=[w2[i],d2?d2[i]:null]);
   const g=(o,k,i)=>{const a=o&&o.hourly&&o.hourly[k];const v=a&&i!=null?a[i]:null;return v==null?null:v};
   const all=times.map((t,i)=>{
     const fi=F?i:null,k=M?mi[t]:null,cur=g(M,'ocean_current_velocity',k);
-    return {t:t*1000,air:g(F,'temperature_2m',fi),rain:g(F,'precipitation',fi),pp:g(F,'precipitation_probability',fi),wc:g(F,'weather_code',fi),cloud:g(F,'cloud_cover',fi),pres:g(F,'pressure_msl',fi),
+    const m2=F?f2[t]:null;
+    return {t:t*1000,wind2:m2&&m2[0]!=null?m2[0]:null,wdir2:m2&&m2[1]!=null?m2[1]:null,air:g(F,'temperature_2m',fi),rain:g(F,'precipitation',fi),pp:g(F,'precipitation_probability',fi),wc:g(F,'weather_code',fi),cloud:g(F,'cloud_cover',fi),pres:g(F,'pressure_msl',fi),
       wind:g(F,'wind_speed_10m',fi),wdir:g(F,'wind_direction_10m',fi),gust:g(F,'wind_gusts_10m',fi),
       wave:g(M,'wave_height',k),wavedir:g(M,'wave_direction',k),waveper:g(M,'wave_period',k),
       sst:g(M,'sea_surface_temperature',k),level:g(M,'sea_level_height_msl',k),cur:cur==null?null:cur/1.852,curdir:g(M,'ocean_current_direction',k)};
@@ -835,6 +919,23 @@ async function loadMeteo(lat,lon){
     let r=0,w=null;
     for(let k=Math.max(0,i-24);k<=i;k++){if(k<i&&all[k].rain!=null)r+=all[k].rain;if(all[k].wave!=null)w=Math.max(w==null?0:w,all[k].wave)}
     a.rain24=r;a.waveMax24=w;
+    const p24=all[i-24];a.dp24=a.pres!=null&&p24&&p24.pres!=null?a.pres-p24.pres:null;
+    // Torbidità: vento, mare e pioggia degli ultimi due giorni, con un effetto che si spegne mentre il sedimento si deposita.
+    // In laguna conta soprattutto il vento sui bassi fondali; in mare l'onda.
+    let wi=0,wv=0,rn=0,any=false;
+    for(let k=Math.max(0,i-48);k<=i;k++){const age=i-k,b=all[k];
+      if(b.wind!=null){any=true;wi=Math.max(wi,Math.max(0,Math.min(1,(b.wind-8)/14))*Math.exp(-age/30))}
+      if(b.wave!=null){any=true;wv=Math.max(wv,Math.min(1,b.wave/1.2)*Math.exp(-age/24))}
+      if(b.rain!=null)rn+=b.rain*Math.exp(-age/36)}
+    rn=Math.min(1,rn/25);
+    if(any){a.turbL=1-(1-wi)*(1-.4*wv)*(1-rn);a.turbS=1-(1-.5*wi)*(1-wv)*(1-.8*rn);a.turbC=[wi,wv,rn]}
+    // Affidabilità: accordo tra due modelli sul vento, e distanza nel tempo. 2 = alta, 1 = media, 0 = bassa.
+    if(a.wind!=null&&a.wind2!=null){
+      const dW=Math.abs(a.wind-a.wind2),dD=Math.max(a.wind,a.wind2)>=6&&a.wdir!=null&&a.wdir2!=null?Math.abs(((a.wdir-a.wdir2+540)%360)-180):0;
+      let c=dW<4&&dD<35?2:dW<8&&dD<70?1:0;
+      if(a.t-now*1000>72*36e5)c=Math.min(c,1);
+      a.conf=c;a.dW=dW;
+    }
   });
   return {off,hours:all.slice(s),hasF:!!F,hasM:!!M};
 }
@@ -1020,13 +1121,37 @@ function lightAt(t,lat,lon){
 }
 function clarityAt(h){
   if(state.clarity!=='auto')return state.clarity;
+  const lag=h.inLag!=null?h.inLag:state.env==='laguna',t=lag?h.turbL:h.turbS;
+  if(t!=null){
+    if(t>=.6)return 'torbida';
+    if(t>=.3||(h.curEst&&h.cur>=1.8))return 'velata';     // corrente forte in canale: acqua velata anche col bel tempo
+    return 'limpida';
+  }
   const w=h.waveMax24,r=h.rain24||0;
   if((w!=null&&w>=1)||r>=15)return 'torbida';
   if((w!=null&&w>=.5)||r>=4||(h.wave!=null&&h.wave>=.4))return 'velata';
   return 'limpida';
 }
+// perché l'acqua è velata o torbida: la causa che pesa di più
+function clarityWhy(h){
+  if(state.clarity!=='auto')return 'impostata da te';
+  if(!h.turbC)return 'stimata da onda e pioggia';
+  const lag=h.inLag!=null?h.inLag:state.env==='laguna',c=h.turbC,v=[[c[0]*(lag?1:.5),'vento dei giorni scorsi'],[c[1]*(lag?.4:1),'mare mosso'],[c[2]*(lag?1:.8),'pioggia']].sort((a,b)=>b[0]-a[0])[0];
+  if(h.clar==='limpida')return 'poco vento, mare e pioggia negli ultimi 2 giorni';
+  if(v[0]<.2&&h.curEst&&h.cur>=1.8)return 'per la corrente forte';
+  return 'per '+v[1];
+}
 const CLAR_LABEL={limpida:'limpida',velata:'velata',torbida:'torbida'};
 const PHASES=['Luna nuova','Luna crescente','Primo quarto','Gibbosa crescente','Luna piena','Gibbosa calante','Ultimo quarto','Luna calante'];
+// Mesi migliori dentro la stagione di ogni specie (alto Adriatico e laguna veneta): stima ragionata, da correggere con il diario.
+const PEAK={branzino:[11,12,1],orata:[9,10,11],serra:[8,9,10],leccia:[6,7,8,9],calamaro:[11,12,1],seppia:[4,5],sarago:[11,12,1,2],mormora:[6,7,8,9],dentice:[5,6,9,10],ricciola:[8,9,10],palamita:[9,10,11],sgombro:[4,5,6],tonno:[8,9,10],cefalo:[5,6,9],passera:[12,1,2],go:[5,6,7,8],sogliola:[10,11],ombrina:[6,7,8],rombo:[4,5],aguglia:[5,6,9],occhiata:[6,7,8,9],pagello:[5,6,10],gallinella:[11,12,1,2],sugarello:[6,7,8,9],tombarello:[8,9],alletterato:[9,10],lampuga:[9,10]};
+function seasonOf(sp,S,month,K){
+  if((PEAK[sp]||[]).includes(month))return [1,'mese migliore dell\'anno'];
+  if(S.months.includes(month))return [.93,'in stagione'];
+  const near=S.months.includes(month%12+1)||S.months.includes((month+10)%12+1);
+  if(K>=.9)return [.85,'fuori stagione, ma l\'acqua è alla temperatura giusta'];
+  return near?[.8,'a ridosso della stagione']:[.65,'fuori stagione'];
+}
 const isRisk=h=>(h.wind!=null&&h.wind>=state.maxWind)||(h.gust!=null&&h.gust>=state.maxWind*1.6)||(h.wave!=null&&h.wave>=state.maxWave);
 function buildHours(d,sp){
   const S=SPECIES[sp],hrs=d.met?d.met.hours:Array.from({length:72},(_,i)=>({t:Math.floor(Date.now()/36e5)*36e5+i*36e5}));
@@ -1043,9 +1168,18 @@ function buildHours(d,sp){
     const W=h.wave==null?.5:trap(h.wave,S.wave);
     let K=h.sst==null?.5:trap(h.sst,S.temp);if(h.dsst!=null&&h.dsst<=-1.5)K*=.7;      // crollo termico: pesce fermo
     const clar=clarityAt(h),Cl=S.clar[clar];
-    const dp=h.dp3,P=dp==null?.6:dp<-4?.5:dp<=-.8?1:dp<.8?.65:dp<2?.5:.35;
-    const month=loc(h.t).getUTCMonth()+1,season=S.months.includes(month)?1:.85;
+    const dp=h.dp3,d24=h.dp24;
+    let P=dp==null?.6:dp<-4?.5:dp<=-.8?1:dp<.8?.65:dp<2?.5:.35,pTxt=dp==null?'dato mancante':dp<-4?'in crollo: tempo in peggioramento rapido':dp<=-.8?'in calo: spesso il pesce mangia':dp<.8?'stabile':'in aumento';
+    if(d24!=null&&dp!=null){
+      if(d24>=8){P=Math.min(P,.4);pTxt='in forte rimonta dopo la perturbazione: pesce svogliato'}
+      else if(d24<=-8&&dp<0){P=1;pTxt='in calo da un giorno: arriva una perturbazione, pesce attivo'}
+      else if(Math.abs(d24)<3&&Math.abs(dp)<.8){P=.75;pTxt='stabile da un giorno'}
+    }
+    const month=loc(h.t).getUTCMonth()+1,[season,seasonTxt]=seasonOf(sp,S,month,K);
     const score=Math.round(100*(.25*L+.15*W+.15*sol+.15*T+.12*K+.10*Cl+.08*P)*season);
+    const tideTxt=tide==null?'dato mancante':(tide<=.25?'marea ferma':rising?'montante':'calante')+(h.curEst?', corrente circa '+n1(h.cur)+' kn '+(h.curIn?'entrante':'uscente'):'');
+    const parts=[['Luce',.25,L,light],['Stato del mare',.15,W,h.wave==null?'dato mancante':'onda '+n1(h.wave)+' m'],['Periodo solunare',.15,sol,sol>=.6&&solEv?(solEv.major?'maggiore':'minore')+', '+solEv.label.toLowerCase():'lontano dai periodi'],
+      ['Movimento di marea',.15,T,tideTxt],['Temperatura dell\'acqua',.12,K,h.sst==null?'dato mancante':n1(h.sst)+' °C'+(h.dsst!=null&&h.dsst<=-1.5?', crollata in 24 ore':'')],['Limpidezza',.10,Cl,'acqua '+clar],['Pressione',.08,P,pTxt]];
     const why=[];
     if(L>=.8)why.push(light);
     if(sol>=.6&&solEv)why.push(solEv.major?'periodo solunare maggiore':'periodo solunare minore');
@@ -1053,7 +1187,8 @@ function buildHours(d,sp){
     if(h.wave!=null&&W>=.9)why.push('mare giusto');
     if(Cl>=.95&&clar!=='limpida')why.push('acqua '+clar);
     if(P>=1)why.push('pressione in calo');
-    return Object.assign({},h,{light,L,sol,tide,rising,W,K,clar,score,risk:isRisk(h),why,ph,moonFrac:mi.fraction,moonAlt:SunCalc.getMoonPosition(new Date(h.t+18e5),d.lat,d.lon).altitude});
+    if(h.curEst&&h.cur>=.8&&S.tideW>=.6)why.push('corrente '+(h.curIn?'entrante':'uscente'));
+    return Object.assign({},h,{parts,season,seasonTxt,light,L,sol,tide,rising,W,K,clar,score,risk:isRisk(h),why,ph,moonFrac:mi.fraction,moonAlt:SunCalc.getMoonPosition(new Date(h.t+18e5),d.lat,d.lon).altitude});
   });
 }
 function windows(H){
@@ -1727,6 +1862,31 @@ function renderSpots(spots,S,sel){
     else if(!b.dataset.done){b.dataset.done='1';favs.push({id:Date.now(),name:`${S.name} · ${n1(s.dep)} m · ${new Date().toLocaleDateString('it-IT',{day:'numeric',month:'short'})}`,lat:s.la,lon:s.lo,sp:state.sp,dep:s.dep});store.set('cartapesca_favs',favs);drawMine();renderDiario();b.textContent='Salvato';setStatus('Salvato in "I miei punti". Si è aperto Google Maps sul punto: lì tocca Salva per metterlo tra i tuoi luoghi.')}
   });
 }
+const CONF_TXT=['previsione incerta','previsione abbastanza affidabile','previsione affidabile'];
+// da dove viene la marea mostrata, in parole semplici
+function tideNote(d,h){
+  const t=d.met&&d.met.tide,f=ms=>new Date(ms).toLocaleString('it-IT',{day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'});
+  if(!t)return 'Livello rispetto al medio mare, marea più effetto di vento e pressione. Modello a 8 km: indicativo, non per la navigazione.';
+  return `Livello rispetto al livello medio, riferito alla stazione <b>${esc(t.name)}</b> (a ${kmLabel(t.d)}). `
+    +(h&&h.levSrc==='astro'?'Per quest\'ora vale la sola marea astronomica: la previsione ufficiale copre circa tre giorni. ':`Previsione ufficiale del Centro Maree${t.prevT?' del '+f(t.prevT):''}. `)
+    +(t.meas?`Ultima misura: ${t.meas.cm>=0?'+':''}${Math.round(t.meas.cm)} cm sullo zero di Punta Salute alle ${hh(t.meas.t)}. `:'')
+    +(t.lag?`La marea qui arriva circa ${Math.abs(t.lag)} minuti ${t.lag<0?'prima':'dopo'} rispetto a Punta Salute${t.cal?' (ritardo calcolato sulle misure degli ultimi giorni)':' (ritardo indicativo)'}. `:'')
+    +(t.cur?'La corrente è una stima dal ritmo della marea e dalla distanza dalla bocca di '+t.inlet+'. ':'')
+    +'Non per la navigazione. Dati: Centro Previsioni e Segnalazioni Maree, Comune di Venezia.';
+}
+// perché quel punteggio: quanto dà ogni voce sul suo massimo
+function whyCard(h,S){
+  if(!h||!h.parts)return '';
+  const rows=h.parts.map(([n,w,v,t])=>{const mx=Math.round(100*w),pt=Math.round(100*w*v);
+    return `<div class="why"><span>${n}<small>${esc(t)}</small></span><span class="meter"><i style="width:${Math.round(v*100)}%;background:${v>=.75?'var(--accent)':v>=.45?'var(--sea)':'var(--muted)'}"></i></span><b>${pt}/${mx}</b></div>`}).join('');
+  const sum=h.parts.reduce((a,[n,w,v])=>a+100*w*v,0);
+  const good=h.parts.filter(x=>x[2]>=.8).map(x=>x[0].toLowerCase()),bad=h.parts.filter(x=>x[2]<.45).sort((a,b)=>b[1]*(1-b[2])-a[1]*(1-a[2])).map(x=>x[0].toLowerCase());
+  return `<div class="card"><h3>Perché ${h.score}/100 alle ${hh(h.t)}</h3>
+    <p style="margin:0 0 6px">${good.length?'Aiutano: <b>'+good.join(', ')+'</b>. ':''}${bad.length?'Frenano: <b>'+bad.join(', ')+'</b>.':good.length?'':'Nessuna voce spicca, nel bene o nel male.'}</p>
+    ${rows}
+    <div class="why"><span>Stagione<small>${esc(h.seasonTxt)}</small></span><span></span><b>×${String(h.season).replace('.',',')}</b></div>
+    <p class="note">Somma delle voci ${Math.round(sum)}, per la stagione di ${S.name.toLowerCase()} fa ${h.score}.${h.conf!=null?' Meteo: <b>'+CONF_TXT[h.conf]+'</b>'+(h.conf<2&&h.dW!=null?' (due modelli danno il vento diverso di '+n0(h.dW)+' kn)':'')+'.':''}${h.levSrc?' Marea: '+(h.levSrc==='prev'?'previsione ufficiale del Centro Maree':'sola marea astronomica')+'.':' Marea: modello a 8 km, indicativo.'}</p></div>`;
+}
 function hourInfo(h){
   const p=[`<b>${dayName(h.t)} ${hh(h.t)}</b> · attività <b>${h.score}/100</b>`,`luce: ${h.light}`];
   if(h.wind!=null)p.push(`vento ${n0(h.wind)} kn ${card(h.wdir)}`);
@@ -1734,6 +1894,8 @@ function hourInfo(h){
   if(h.sst!=null)p.push(`acqua ${n1(h.sst)} °C, ${h.clar}`);
   if(h.tide!=null)p.push(h.tide<=.25?'marea ferma':h.rising?'marea montante':'marea calante');
   if(h.sol>=.6)p.push('periodo solunare');
+  if(h.curEst&&h.cur>=.3)p.push('corrente circa '+n1(h.cur)+' kn '+(h.curIn?'entrante':'uscente'));
+  if(h.conf===0)p.push('<span class="pill warn">previsione incerta</span>');
   if(h.risk)p.push('<span class="pill warn">oltre i tuoi limiti</span>');
   return p.join(' · ');
 }
@@ -1775,11 +1937,12 @@ function renderPiano(H,S){
     <p id="hinfo" style="margin:8px 0 6px">${hourInfo(H[state.selHour])}</p>
     <p class="note">Tocca un'ora: spot, scarroccio ed esca si aggiornano su quell'ora.</p>
     <div class="legend"><span><i style="background:var(--accent)"></i>ore migliori</span><span><i style="background:var(--sea)"></i>buone</span><span><i style="background:var(--low)"></i>scarse</span><span><i style="background:var(--warn)"></i>oltre i tuoi limiti</span></div></div>
+    ${whyCard(H[state.selHour],S)}
     <div class="card"><h3>La settimana</h3>${week}<p class="note">Il numero è l'attività nell'ora migliore con mare entro i tuoi limiti; "no" se non c'è nessuna ora navigabile.</p></div>
     <div class="card"><h3>Luna e periodi solunari</h3>
     <p>${PHASES[Math.round(H[0].ph*8)%8]}, illuminata al ${Math.round(H[0].moonFrac*100)}%.</p>
     ${d.sol.filter(e=>e.t>H[0].t-36e5&&e.t<H[0].t+30*36e5).map(e=>`<div class="win"><span>${e.label}</span><span><b>${dayName(e.t)} ${hh(e.t)}</b> · ${e.major?'maggiore, ±1 h':'minore, ±30 min'}</span></div>`).join('')}
-    <p class="note">Il punteggio pesa luce (25%), stato del mare (15%), periodi solunari (15%), movimento di marea (15%), temperatura dell'acqua (12%), limpidezza (10%) e andamento della pressione (8%) secondo le abitudini di ${S.name.toLowerCase()}. I pesi sono una stima ragionata, non una misura: usali come indicazione e correggili con il tuo diario.</p></div>`;
+    <p class="note">Il punteggio pesa luce (25%), stato del mare (15%), periodi solunari (15%), movimento di marea (15%), temperatura dell'acqua (12%), limpidezza (10%) e andamento della pressione (8%) secondo le abitudini di ${S.name.toLowerCase()}; il totale è poi ridotto fuori dai mesi migliori. I pesi sono una stima ragionata, non una misura: usali come indicazione e correggili con il tuo diario.</p></div>`;
   p.querySelectorAll('.bar').forEach(b=>b.onclick=()=>{state.selHour=+b.dataset.i;render()});
   bindBoat();
 }
@@ -1801,18 +1964,18 @@ function renderMare(H,d){
   p.innerHTML=`<div class="card now"><h3>Condizioni ${state.selDay===0&&state.selHour===0?'adesso':dayName(n.t)+' alle '+hh(n.t)}</h3><label class="note" for="mh">Ora</label><select id="mh" class="inl">${ix.map(i=>`<option value="${i}"${i===state.selHour?' selected':''}>${hh(H[i].t)} · ${H[i].light}</option>`).join('')}</select></div>
   ${wxCard(Hd,'Previsioni meteo, '+(state.selDay===0?'oggi':dayName(dy.t)))}
   <div class="tiles">
-    ${tile('Vento',n0(n.wind,' kn'),n.wind==null?'':'da '+card(n.wdir)+', raffiche '+n0(n.gust,' kn'))}
+    ${tile('Vento',n0(n.wind,' kn'),n.wind==null?'':'da '+card(n.wdir)+', raffiche '+n0(n.gust,' kn')+(n.conf===0?'; modelli in disaccordo':''))}
     ${tile('Onda',n1(n.wave,' m'),n.wave==null?'':'periodo '+n0(n.waveper,' s')+', da '+card(n.wavedir))}
-    ${tile('Acqua',n1(n.sst,' °C'),n.dsst==null?'in superficie':(n.dsst>=0?'+':'')+n1(n.dsst,' °C')+' in 24 ore')}
-    ${tile('Limpidezza',CLAR_LABEL[n.clar],state.clarity==='auto'?'stimata da onda e pioggia':'impostata da te')}
-    ${tile('Corrente',n1(n.cur,' kn'),n.cur==null?'':'verso '+card(n.curdir))}
+    ${tile('Acqua',n1(n.sst,' °C'),d.met.sstMeas?'misurata: '+n1(d.met.sstMeas.v,' °C')+' a '+esc(d.met.sstMeas.n):n.dsst==null?'in superficie':(n.dsst>=0?'+':'')+n1(n.dsst,' °C')+' in 24 ore')}
+    ${tile('Limpidezza',CLAR_LABEL[n.clar],clarityWhy(n))}
+    ${tile('Corrente',n1(n.cur,' kn'),n.cur==null?'':n.curEst?(n.curIn?'entrante':'uscente')+', verso '+card(n.curdir)+' (stima)':'verso '+card(n.curdir))}
     ${tile('Pressione',n0(n.pres,' hPa'),n.dp3==null?'':n.dp3>.8?'in aumento':n.dp3<-.8?'in calo: spesso il pesce mangia':'stabile')}
     ${tile('Aria',n0(n.air,' °C'),n.cloud==null?'':'nuvole '+n0(n.cloud,'%')+', pioggia 24 h '+n1(n.rain24,' mm'))}
     ${tile('Sole',ok(sun.sunrise)+' – '+ok(sun.sunset),'luce da '+ok(sun.dawn)+' a '+ok(sun.dusk))}
   </div>
   <div class="card"><h3>Marea e livello del mare</h3>${tideSvg(H2)||'<p>Livello del mare non disponibile per questo punto.</p>'}
     ${ex.length?'<p style="margin:6px 0 0">'+ex.map(e=>`${e.hi?'Alta':'Bassa'} <b>${dayName(e.t)} ${hh(e.t)}</b>`).join(' · ')+'</p>':''}
-    <p class="note">Livello rispetto al medio mare, marea più effetto di vento e pressione. Modello a 8 km: indicativo, non per la navigazione.</p></div>
+    <p class="note">${tideNote(d,n)}</p></div>
   <div class="card"><h3>Ora per ora, ${state.selDay===0?'oggi':dayName(dy.t)}</h3><div class="scroll"><table><thead><tr><th>Ora</th><th>Vento kn</th><th>Raffica</th><th>Onda m</th><th>Acqua °C</th><th>Pioggia mm</th><th>hPa</th></tr></thead><tbody>
     ${Hd.filter((h,i)=>i%2===0).map(h=>`<tr><td>${hh(h.t)}</td><td>${n0(h.wind)} ${card(h.wdir)}</td><td>${n0(h.gust)}</td><td>${n1(h.wave)}</td><td>${n1(h.sst)}</td><td>${n1(h.rain)}</td><td>${n0(h.pres)}</td></tr>`).join('')}
   </tbody></table></div></div>`;
@@ -1916,8 +2079,9 @@ async function analyze(){
   refMarker.setLatLng([lat,lon]);areaRect.setBounds([[lat-dLa,lon-dLo],[lat+dLa,lon+dLo]]);
   setStatus('Carico batimetria, meteo e mare…');
   const osmR=Math.max(R,6000),pStruct=loadStructs(lat,lon,osmR).catch(()=>null);   // almeno 6 km: copre anche la mappa attorno al raggio
-  let [grid,met,hr]=await Promise.all([loadGrid(lat,lon,R,()=>run===state.run).catch(()=>null),loadMeteo(lat,lon).catch(()=>null),loadHR(lat,lon,R).catch(()=>null)]);
+  let [grid,met,hr,maree]=await Promise.all([loadGrid(lat,lon,R,()=>run===state.run).catch(()=>null),loadMeteo(lat,lon).catch(()=>null),loadHR(lat,lon,R).catch(()=>null),loadMaree().catch(()=>null)]);
   if(run!==state.run)return;
+  try{applyTide(met,maree,lat,lon)}catch(e){}
   if(grid){applyHR(grid,hr);deriveGrid(grid)}
   let cached=null,cst=[];
   if(!grid&&!met){

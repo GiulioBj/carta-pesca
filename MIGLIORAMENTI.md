@@ -4,6 +4,17 @@ Elenco delle idee emerse dopo la versione 18 (novembre 2026). Le voci da 1 a 6 s
 
 **Fatto nella versione 19:** bussola con freccia del vento e dello scarroccio, scie animate del vento con interruttore e trasparenza, installazione come app anche su Android (manifest, icone e service worker).
 
+**Fatto nella versione 20 (previsioni e consigli):**
+
+- limpidezza stimata da vento, mare e pioggia degli ultimi due giorni, distinta tra laguna e mare, con la causa indicata;
+- affidabilità della previsione dal confronto tra due modelli meteo sul vento;
+- stagione per specie a tre livelli (mese migliore, in stagione, fuori stagione) che tiene conto della temperatura dell'acqua;
+- pressione valutata anche sull'andamento delle ultime 24 ore;
+- scheda "Perché questo punteggio" nel Piano, con il contributo di ogni voce;
+- nella app, tutto il necessario per la marea reale del Centro Maree, la corrente stimata nei canali e la temperatura dell'acqua misurata (vedi voci 2 e 6).
+
+**Non fatto, per scelta:** il diario che corregge i pesi (voce 4) resta per dopo.
+
 **Prossime consigliate:** la 7 e la 8 insieme, perché riusano il calcolo dello scarroccio che c'è già.
 
 ## 1. Uso senza rete in barca
@@ -26,7 +37,11 @@ Elenco delle idee emerse dopo la versione 18 (novembre 2026). Le voci da 1 a 6 s
 
 **Idea.** Usare le previsioni del Centro Maree del Comune di Venezia per la stazione più vicina al target (Chioggia, Punta della Salute, Burano e le altre), tenendo il modello attuale come riserva fuori dalla laguna.
 
-**Da verificare.** Se i dati del Centro Maree si possono leggere direttamente da una pagina web e con quali condizioni d'uso.
+**Stato.** La app è pronta dalla versione 20. I dati sono open data con licenza CC BY (dati.venezia.it): previsione ufficiale dei massimi e minimi a Punta Salute per circa tre giorni, marea astronomica per i giorni successivi, livelli misurati ogni 5 minuti in 14 stazioni. Lo script `tools/maree.py` li riunisce in `maree.json` e calcola, dalle misure degli ultimi tre giorni, ritardo e ampiezza di ogni stazione rispetto a Punta Salute. La app usa la stazione più vicina al target (entro 25 km) e corregge la curva con l'ultima misura.
+
+**Da attivare.** Serve l'aggiornamento automatico ogni mezz'ora (`.github/workflows/maree.yml`), che pubblica `maree.json` nel ramo `dati`. Finché non è attivo la app continua con il modello a 8 km. GitHub sospende gli aggiornamenti programmati dopo 60 giorni senza modifiche al repository: basta riattivarli dalla scheda Actions.
+
+**Limiti.** Prima che ci siano abbastanza misure i ritardi delle stazioni sono valori indicativi. Oltre i tre giorni vale la sola marea astronomica, senza l'effetto di vento e pressione.
 
 ## 3. Taratura con l'ecoscandaglio
 
@@ -58,7 +73,9 @@ Elenco delle idee emerse dopo la versione 18 (novembre 2026). Le voci da 1 a 6 s
 
 **Idea.** Stimare verso e forza della corrente nei canali principali a partire dalla marea alle bocche di porto (montante entra, calante esce, con ritardo crescente verso l'interno), e usarla sia nelle finestre del Piano sia per dire su quale lato del canale mettersi.
 
-**Limite.** Sarebbe una stima semplificata: senza un modello idrodinamico vero vale per i canali grandi vicino alle bocche, meno per l'interno.
+**Stato.** Fatta in forma semplice nella versione 20, attiva insieme alla marea reale: la velocità segue il ritmo con cui cambia il livello ed è più forte vicino alla bocca di porto; montante entra, calante esce. Entra nello scarroccio e nella spiegazione del punteggio.
+
+**Limite.** È una stima semplificata: senza un modello idrodinamico vero vale per i canali grandi vicino alle bocche, meno per l'interno, e non conosce la direzione del singolo canale.
 
 ## 7. Passata di scarroccio sulla mappa
 
@@ -100,6 +117,7 @@ Elenco delle idee emerse dopo la versione 18 (novembre 2026). Le voci da 1 a 6 s
 
 - **Dati nel sito.** Cartella `laguna/`: rilievo della laguna in tre livelli di dettaglio (`0`, `1`, `2`) e `osm.json` con canali, barene, costa e strutture. Sono estratti fatti a novembre 2026 e vanno rigenerati per aggiornarli.
 - **Fuori dalla laguna di Venezia** fondali e strutture arrivano ancora dai servizi esterni (EMODnet a 115 m e OpenStreetMap), con i limiti di precisione e di velocità che ne derivano.
+- **Versione 20 provata solo con dati simulati.** Meteo, marea e misure sono stati simulati nei formati reali; con i dati veri vanno ricontrollati soprattutto orari della marea (ora solare e ora legale) e nome del secondo modello meteo (`gfs_seamless`).
 - **Installazione su Android non provata su un telefono vero.** Manifest, icone e service worker sono stati controllati solo in un browser da computer.
 - **Non provato su iPhone vero.** Layout e caricamenti sono stati verificati in un browser che simula l'iPhone 17 Pro; il comportamento su Safari va confermato a ogni versione.
 - **Licenze.** Il codice è "tutti i diritti riservati"; i dati di terzi mantengono le loro licenze (vedi `LICENSE`).
