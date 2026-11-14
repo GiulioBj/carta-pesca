@@ -1,9 +1,14 @@
 # Carta di pesca: possibili modifiche future
 
-Elenco delle idee emerse dopo la versione 18 (novembre 2026), in ordine di utilità stimata.
-Nessuna è ancora iniziata. Le prime due sono quelle consigliate per partire.
+Elenco delle idee emerse dopo la versione 18 (novembre 2026). Le voci da 1 a 6 sono in ordine di utilità stimata; quelle da 7 a 11 sono nate con il vento sulla mappa.
+
+**Fatto nella versione 19:** bussola con freccia del vento e dello scarroccio, scie animate del vento con interruttore e trasparenza, installazione come app anche su Android (manifest, icone e service worker).
+
+**Prossime consigliate:** la 7 e la 8 insieme, perché riusano il calcolo dello scarroccio che c'è già.
 
 ## 1. Uso senza rete in barca
+
+**Stato.** Avviato con la versione 19: la app è installabile e, senza rete, riapre la pagina e i file del sito già visitati. Mancano le librerie esterne e le tessere della carta di sfondo.
 
 **Problema.** Senza segnale la app mostra solo l'ultima zona caricata attorno al target; il resto della mappa resta vuoto.
 
@@ -55,9 +60,46 @@ Nessuna è ancora iniziata. Le prime due sono quelle consigliate per partire.
 
 **Limite.** Sarebbe una stima semplificata: senza un modello idrodinamico vero vale per i canali grandi vicino alle bocche, meno per l'interno.
 
+## 7. Passata di scarroccio sulla mappa
+
+**Problema.** La app dice verso e velocità dello scarroccio, ma non mostra dove porta la barca.
+
+**Idea.** Toccando un punto, disegnare la linea che la barca percorre nei 15, 30 e 60 minuti successivi con vento e corrente dell'ora scelta, e i fondali che attraversa. Al contrario, dato uno spot, indicare da dove partire per passarci sopra.
+
+**Limite.** Il vento è quello previsto sul target e la corrente c'è solo dove il modello la fornisce: in canale la deriva reale può essere diversa.
+
+## 8. Cursore delle ore
+
+**Problema.** Per confrontare le ore bisogna aprire ogni volta il menu a tendina.
+
+**Idea.** Una barra da trascinare sotto la mappa: vento, scarroccio, bassi fondali e zone probabili cambiano mentre si scorre, e la finestra buona si trova a colpo d'occhio.
+
+## 9. Zone ridossate
+
+**Problema.** Con vento teso non si capisce subito dove si pesca ancora comodi.
+
+**Idea.** Colorare le acque riparate dal vento dell'ora scelta, cioè quelle con terra, barene, dighe o isole sopravento entro una certa distanza.
+
+**Da decidere.** Quanta distanza sopravento conta come riparo e come trattare le barene sommerse con l'alta marea.
+
+## 10. Vento contro corrente
+
+**Problema.** Alle bocche di porto, con vento e marea in versi opposti, l'onda diventa corta e ripida anche con poco vento.
+
+**Idea.** Un avviso nel Piano e sulla mappa nelle ore in cui vento e corrente sono contrari alle bocche. Dipende dalla stima della corrente della voce 6.
+
+## 11. Allarme ancora
+
+**Problema.** All'ancora, se la barca ara ci si accorge tardi.
+
+**Idea.** Fissare il punto quando si cala l'ancora e far suonare il telefono se la posizione GPS esce da un raggio scelto.
+
+**Limite.** Funziona solo con la app aperta e lo schermo acceso: il browser non segue la posizione in sottofondo.
+
 ## Note per chi riprende il lavoro
 
 - **Dati nel sito.** Cartella `laguna/`: rilievo della laguna in tre livelli di dettaglio (`0`, `1`, `2`) e `osm.json` con canali, barene, costa e strutture. Sono estratti fatti a novembre 2026 e vanno rigenerati per aggiornarli.
 - **Fuori dalla laguna di Venezia** fondali e strutture arrivano ancora dai servizi esterni (EMODnet a 115 m e OpenStreetMap), con i limiti di precisione e di velocità che ne derivano.
+- **Installazione su Android non provata su un telefono vero.** Manifest, icone e service worker sono stati controllati solo in un browser da computer.
 - **Non provato su iPhone vero.** Layout e caricamenti sono stati verificati in un browser che simula l'iPhone 17 Pro; il comportamento su Safari va confermato a ogni versione.
 - **Licenze.** Il codice è "tutti i diritti riservati"; i dati di terzi mantengono le loro licenze (vedi `LICENSE`).
