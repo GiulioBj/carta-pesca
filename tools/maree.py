@@ -202,10 +202,19 @@ def main():
         tq.append([r.get('stazione', ''), la, lo, ts(r['data'], SOLARE), v])
     out['tacqua'] = tq
 
-    # vento misurato: per ora copio il file così com'è, per leggerne il formato
-    v = leggi('vento.json', cartella)
-    if v is not None:
-        out['vento_raw'] = v
+    # vento misurato: "gradi, m/s, raffica m/s"; le coordinate vengono dalle stazioni di livello con lo stesso codice
+    dove = {s[0]: (s[2], s[3]) for s in liv}
+    dove.update({k: v for k, v in {'1029': (45.4453, 12.3361), '1037': (45.412, 12.2615), '1046': (45.25, 12.7727)}.items() if k not in dove})
+    vento = []
+    for r in leggi('vento.json', cartella) or []:
+        sid = str(r.get('ID_stazione'))
+        pezzi = [num(x) for x in str(r.get('valore', '')).split(',')]
+        if sid not in dove or len(pezzi) < 2 or pezzi[0] is None or pezzi[1] is None or not r.get('data'):
+            continue
+        raffica = pezzi[2] if len(pezzi) > 2 and pezzi[2] is not None else None
+        vento.append([r.get('stazione', ''), dove[sid][0], dove[sid][1], ts(r['data'], SOLARE), round(pezzi[0]) % 360,
+                      round(pezzi[1] * 1.94384, 1), None if raffica is None else round(raffica * 1.94384, 1)])
+    out['vento'] = vento
 
     with open(uscita, 'w', encoding='utf-8') as f:
         json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
