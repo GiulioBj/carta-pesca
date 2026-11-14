@@ -102,15 +102,13 @@ body.full #oppanel{top:calc(60px + env(safe-area-inset-top))}
 #instbar[hidden]{display:none}
 #instbar span{flex:1}
 #windcv{position:absolute;inset:0;width:100%;height:100%;z-index:500;pointer-events:none}
-#windbox{position:absolute;right:10px;top:60px;z-index:500;width:80px;box-sizing:border-box;padding:5px 2px 6px;background:var(--bar);color:#fff;border:0;border-radius:12px;font:500 11.5px/1.25 var(--body);text-align:center;box-shadow:0 1px 5px rgba(0,0,0,.4)}
-#windbox svg{display:block;width:70px;height:70px;margin:0 auto 2px}
-#windbox b{font:700 14px var(--display);font-variant-numeric:tabular-nums}
-#windbox .dr{color:#4fc3ff;display:block;margin-top:3px;padding-top:3px;border-top:1px solid rgba(255,255,255,.25)}
-#windbox .dr b{color:#4fc3ff}
-#windbox .wv b{color:#ff9a4d}
-#windbox small{font-size:11px}
-#windbox.off #wb-txt{opacity:.7}
-#windbox [hidden]{display:none}
+#windbox{position:absolute;right:10px;top:60px;z-index:500;width:80px;box-sizing:border-box;padding:6px 4px 6px;background:var(--card);color:var(--ink);border:2px solid rgba(0,0,0,.25);border-radius:8px;font:500 11px/1.2 var(--body);text-align:center}
+#windbox .cmp{display:block;width:30px;height:30px;margin:0 auto 3px}
+#windbox .wr{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:4px}
+#windbox .ar{width:17px;height:17px;flex:none}
+#windbox b{font:700 14px var(--body);font-variant-numeric:tabular-nums;white-space:nowrap}
+#windbox small{display:block;font-size:10.5px;color:var(--muted)}
+#windbox.off .wr,#windbox.off small{opacity:.6}
 body.full #windbox{top:calc(60px + env(safe-area-inset-top))}
 body.full{overflow:hidden}
 body.full .mapbox{position:fixed;inset:0;height:auto;min-height:0;z-index:2000}
@@ -236,7 +234,7 @@ footer a{color:var(--sea)}
 </head>
 <body>
 <header id="hd">
-  <div class="top"><h1>Carta di pesca <small style="font:400 11px var(--body);opacity:.7;text-transform:none">v20</small></h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
+  <div class="top"><h1>Carta di pesca <small style="font:400 11px var(--body);opacity:.7;text-transform:none">v21</small></h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
   <div class="ctl"><select id="spsel" aria-label="Specie da cercare"></select></div>
   <div class="ctl">
     <div class="seg" role="group" aria-label="Da dove peschi">
@@ -258,15 +256,7 @@ footer a{color:var(--sea)}
     <div id="trackbar" hidden><span><b id="trackbig"></b><br><span id="tracktxt"></span></span><button id="trackstop" type="button">Stop</button></div>
     <canvas id="windcv" aria-hidden="true"></canvas>
     <button id="windbox" type="button" aria-pressed="true" aria-label="Bussola e vento: tocca per fermare o riavviare l'animazione">
-      <svg viewBox="-50 -50 100 100" aria-hidden="true">
-        <circle r="45" fill="rgba(255,255,255,.07)" stroke="rgba(255,255,255,.6)" stroke-width="1.5"/>
-        <g stroke="rgba(255,255,255,.6)" stroke-width="1.5"><path d="M45 0h-6M-45 0h6M0 45v-6"/></g>
-        <path d="M0-48l-6 11h12z" fill="#ff4b3a"/>
-        <text y="-25" text-anchor="middle" font-size="12" font-weight="700" fill="#fff" opacity=".9">N</text>
-        <g id="wb-dr" hidden stroke="#0e2a3b" stroke-width="1.5" stroke-linejoin="round"><path d="M-3.5-2V-22H-11L0-40 11-22H3.5V-2z" fill="#4fc3ff"/></g>
-        <g id="wb-w" hidden stroke="#0e2a3b" stroke-width="1.5" stroke-linejoin="round"><path id="wb-wp" d="" fill="#ff7a1a"/></g>
-        <circle r="3" fill="#fff"/>
-      </svg>
+      <svg class="cmp" viewBox="-12 -12 24 24" aria-hidden="true"><circle r="11.3" fill="none" stroke="currentColor" stroke-width=".8" opacity=".35"/><path d="M0-9.5L4 0H-4z" fill="#ea4335"/><path d="M0 9.5L4 0H-4z" fill="#b9bdc1"/><circle r="1.3" fill="#fff"/></svg>
       <span id="wb-txt">vento…</span>
     </button>
     <button id="fs" type="button" aria-pressed="false">Schermo intero</button>
@@ -286,8 +276,8 @@ footer a{color:var(--sea)}
         <span><i class="key rd" style="background:#fff;border:2px solid #0e2a3b"></i>punto toccato</span>
         <span><i class="key" style="background:#f2c200;border:1.5px solid #0e2a3b"></i>punto salvato</span>
         <span><i class="key rd" style="background:#1f8a5b"></i>cattura del diario</span>
-        <span><i class="key ln" style="background:#e8590c"></i>vento: da dove arriva (freccia) e dove va (scie)</span>
-        <span><i class="key ln" style="background:#4fc3ff"></i>scarroccio: dove va la barca</span>
+        <span><i class="key ln" style="background:#e8590c"></i>vento: dove va (freccia e scie)</span>
+        <span><i class="key ln" style="background:#1a73e8"></i>scarroccio: dove va la barca</span>
       </div>
     </div>
     <div id="psheet" hidden><button id="pclose" type="button" aria-label="Chiudi le informazioni sul punto">Chiudi ×</button><div id="pbody"></div></div>
@@ -835,7 +825,11 @@ function tideModel(m,lat,lon){
   const A=m.astro||[],P=m.prev&&m.prev.e||[];
   if(P.length<2&&A.length<4)return null;
   let best=null;for(const st of m.st){const dd=dist(lat,lon,st[2],st[3]);if(!best||dd<best.d)best={d:dd,s:st}}
-  if(!best||best.d>25000)return null;                       // fuori dalla laguna e dal suo litorale resta il modello
+  if(best&&best.d>25000){                                    // lungo il litorale veneto vale la stazione di mare più vicina, fino a 60 km
+    best=null;for(const st of m.st)if(SEA_ST.includes(st[0])){const dd=dist(lat,lon,st[2],st[3]);if(!best||dd<best.d)best={d:dd,s:st}}
+    if(best&&best.d>60000)best=null;
+  }
+  if(!best)return null;                                      // più lontano resta il modello a 8 km
   const sid=best.s[0],name=best.s[1],lag=best.s[4],k=best.s[5],ncal=best.s[7],z0=m.z0,C=[];
   let tA=Infinity,tB=-Infinity;
   if(P.length>=2){
@@ -1770,13 +1764,11 @@ function windRun(){
   else{cancelAnimationFrame(WIND.raf);WIND.raf=0;const c=$('#windcv');c.getContext('2d').clearRect(0,0,c.width,c.height)}
 }
 function setWind(h){
-  WIND.h=h;const g=$('#wb-w'),gd=$('#wb-dr'),ok=h&&h.wind!=null&&h.wdir!=null,dr=h?drift(h):null,on=state.wind!==false;
-  const showDr=!!(dr&&dr.kn>=.05&&state.mode==='barca');
-  // vento: freccia arancione che arriva dal bordo, da dove soffia, fino al centro; scarroccio: freccia azzurra che parte dal centro verso dove va la barca
-  if(ok&&h.wind>=1){g.removeAttribute('hidden');g.setAttribute('transform','rotate('+(h.wdir%360)+')');
-    $('#wb-wp').setAttribute('d',showDr?'M-3.5-40V-20H-11L0-3 11-20H3.5V-40z':'M-3.5-40V14H-11L0 34 11 14H3.5V-40z')}else g.setAttribute('hidden','');
-  if(showDr){gd.removeAttribute('hidden');gd.setAttribute('transform','rotate('+dr.to+')')}else gd.setAttribute('hidden','');
-  $('#wb-txt').innerHTML=!ok?'vento non disponibile':(h.wind<1?'<b>calma</b>':`<span class="wv"><b>${n0(h.wind)} kn</b> da ${card(h.wdir)}</span>`+(h.gust!=null?`<br><small>raffiche ${n0(h.gust)}</small>`:''))+(showDr?`<span class="dr"><small>scarroccio</small><br><b>${n1(dr.kn)} kn</b> → ${card(dr.to)}</span>`:'');
+  WIND.h=h;const ok=h&&h.wind!=null&&h.wdir!=null,dr=h?drift(h):null,on=state.wind!==false,showDr=!!(dr&&dr.kn>=.05&&state.mode==='barca');
+  // due righe: freccia arancione = dove va il vento, freccia blu = dove va la barca
+  const ar=(deg,col)=>`<svg class="ar" viewBox="-10 -10 20 20" style="transform:rotate(${Math.round(deg)}deg)" aria-hidden="true"><path d="M0-9L6.5 7.5 0 3.8-6.5 7.5z" fill="${col}"/></svg>`;
+  $('#wb-txt').innerHTML=!ok?'<small>vento non disponibile</small>':(h.wind<1?'<span class="wr"><b>calma</b></span>':`<span class="wr">${ar(h.wdir+180,'#e8590c')}<b>${n0(h.wind)} kn</b></span><small>vento da ${card(h.wdir)}</small>`)
+    +(showDr?`<span class="wr">${ar(dr.to,'#1a73e8')}<b>${n1(dr.kn)} kn</b></span><small>scarroccio ${card(dr.to)}</small>`:'');
   const b=$('#windbox');b.classList.toggle('off',!on);b.setAttribute('aria-pressed',on);$('#ly-wind').checked=on;
   windRun();
 }
