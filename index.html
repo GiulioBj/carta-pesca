@@ -105,7 +105,10 @@ body.full #oppanel{top:calc(60px + env(safe-area-inset-top))}
 #windbox{position:absolute;right:10px;top:60px;z-index:500;width:80px;box-sizing:border-box;padding:5px 2px 6px;background:var(--bar);color:#fff;border:0;border-radius:12px;font:500 11.5px/1.25 var(--body);text-align:center;box-shadow:0 1px 5px rgba(0,0,0,.4)}
 #windbox svg{display:block;width:70px;height:70px;margin:0 auto 2px}
 #windbox b{font:700 14px var(--display);font-variant-numeric:tabular-nums}
-#windbox .dr{color:#8cc4ff}
+#windbox .dr{color:#4fc3ff;display:block;margin-top:3px;padding-top:3px;border-top:1px solid rgba(255,255,255,.25)}
+#windbox .dr b{color:#4fc3ff}
+#windbox .wv b{color:#ff9a4d}
+#windbox small{font-size:11px}
 #windbox.off #wb-txt{opacity:.7}
 #windbox [hidden]{display:none}
 body.full #windbox{top:calc(60px + env(safe-area-inset-top))}
@@ -253,17 +256,13 @@ footer a{color:var(--sea)}
     <canvas id="windcv" aria-hidden="true"></canvas>
     <button id="windbox" type="button" aria-pressed="true" aria-label="Bussola e vento: tocca per fermare o riavviare l'animazione">
       <svg viewBox="-50 -50 100 100" aria-hidden="true">
-        <circle r="47" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.55)" stroke-width="1.2"/>
-        <g stroke="rgba(255,255,255,.6)" stroke-width="1"><path d="M0-47v5M0 47v-5M-47 0h5M47 0h-5M33.2-33.2l-3 3M33.2 33.2l-3-3M-33.2 33.2l3-3M-33.2-33.2l3 3"/></g>
-        <path d="M0-20L5-5 20 0 5 5 0 20-5 5-20 0-5-5z" transform="rotate(45)" fill="rgba(255,255,255,.22)"/>
-        <path d="M0 30L6 6 30 0 6-6 0-30-6-6-30 0-6 6z" fill="rgba(255,255,255,.4)"/>
-        <path d="M0-30L6-6H-6z" fill="#ff4b3a"/>
-        <text y="-33" text-anchor="middle" font-size="12" font-weight="700" fill="#ff6a5a">N</text>
-        <text y="42" text-anchor="middle" font-size="9.5" fill="#fff" opacity=".85">S</text>
-        <text x="38.5" y="3.4" text-anchor="middle" font-size="9.5" fill="#fff" opacity=".85">E</text>
-        <text x="-38.5" y="3.4" text-anchor="middle" font-size="9.5" fill="#fff" opacity=".85">O</text>
-        <g id="wb-dr" hidden><path d="M0 16V-12" stroke="#8cc4ff" stroke-width="2.6" stroke-dasharray="4 3"/><path d="M0-22l-5.5 10h11z" fill="#8cc4ff"/></g>
-        <g id="wb-w" hidden stroke="#0e2a3b" stroke-width="1.2" stroke-linejoin="round"><path d="M-2.6 27V-12H-9L0-29 9-12H2.6V27z" fill="#ff7a1a"/></g>
+        <circle r="45" fill="rgba(255,255,255,.07)" stroke="rgba(255,255,255,.6)" stroke-width="1.5"/>
+        <g stroke="rgba(255,255,255,.6)" stroke-width="1.5"><path d="M45 0h-6M-45 0h6M0 45v-6"/></g>
+        <path d="M0-48l-6 11h12z" fill="#ff4b3a"/>
+        <text y="-25" text-anchor="middle" font-size="12" font-weight="700" fill="#fff" opacity=".9">N</text>
+        <g id="wb-dr" hidden stroke="#0e2a3b" stroke-width="1.5" stroke-linejoin="round"><path d="M-3.5-2V-22H-11L0-40 11-22H3.5V-2z" fill="#4fc3ff"/></g>
+        <g id="wb-w" hidden stroke="#0e2a3b" stroke-width="1.5" stroke-linejoin="round"><path id="wb-wp" d="" fill="#ff7a1a"/></g>
+        <circle r="3" fill="#fff"/>
       </svg>
       <span id="wb-txt">vento…</span>
     </button>
@@ -284,8 +283,8 @@ footer a{color:var(--sea)}
         <span><i class="key rd" style="background:#fff;border:2px solid #0e2a3b"></i>punto toccato</span>
         <span><i class="key" style="background:#f2c200;border:1.5px solid #0e2a3b"></i>punto salvato</span>
         <span><i class="key rd" style="background:#1f8a5b"></i>cattura del diario</span>
-        <span><i class="key ln" style="background:#e8590c"></i>vento: dove va (scie e freccia)</span>
-        <span><i class="key ln" style="background:#1a73e8"></i>scarroccio stimato</span>
+        <span><i class="key ln" style="background:#e8590c"></i>vento: da dove arriva (freccia) e dove va (scie)</span>
+        <span><i class="key ln" style="background:#4fc3ff"></i>scarroccio: dove va la barca</span>
       </div>
     </div>
     <div id="psheet" hidden><button id="pclose" type="button" aria-label="Chiudi le informazioni sul punto">Chiudi ×</button><div id="pbody"></div></div>
@@ -1637,9 +1636,12 @@ function windRun(){
 }
 function setWind(h){
   WIND.h=h;const g=$('#wb-w'),gd=$('#wb-dr'),ok=h&&h.wind!=null&&h.wdir!=null,dr=h?drift(h):null,on=state.wind!==false;
-  if(ok&&h.wind>=1){g.removeAttribute('hidden');g.setAttribute('transform','rotate('+((h.wdir+180)%360)+')')}else g.setAttribute('hidden','');
-  if(dr&&dr.kn>=.05&&state.mode==='barca'){gd.removeAttribute('hidden');gd.setAttribute('transform','rotate('+dr.to+')')}else gd.setAttribute('hidden','');
-  $('#wb-txt').innerHTML=!ok?'vento non disponibile':h.wind<1?'<b>calma</b>':`<b>${n0(h.wind)} kn</b> da ${card(h.wdir)}`+(h.gust!=null?`<br>raffiche ${n0(h.gust)}`:'')+(dr&&dr.kn>=.05&&state.mode==='barca'?`<br><span class="dr">scarroccio ${n1(dr.kn)} kn → ${card(dr.to)}</span>`:'');
+  const showDr=!!(dr&&dr.kn>=.05&&state.mode==='barca');
+  // vento: freccia arancione che arriva dal bordo, da dove soffia, fino al centro; scarroccio: freccia azzurra che parte dal centro verso dove va la barca
+  if(ok&&h.wind>=1){g.removeAttribute('hidden');g.setAttribute('transform','rotate('+(h.wdir%360)+')');
+    $('#wb-wp').setAttribute('d',showDr?'M-3.5-40V-20H-11L0-3 11-20H3.5V-40z':'M-3.5-40V14H-11L0 34 11 14H3.5V-40z')}else g.setAttribute('hidden','');
+  if(showDr){gd.removeAttribute('hidden');gd.setAttribute('transform','rotate('+dr.to+')')}else gd.setAttribute('hidden','');
+  $('#wb-txt').innerHTML=!ok?'vento non disponibile':(h.wind<1?'<b>calma</b>':`<span class="wv"><b>${n0(h.wind)} kn</b> da ${card(h.wdir)}</span>`+(h.gust!=null?`<br><small>raffiche ${n0(h.gust)}</small>`:''))+(showDr?`<span class="dr"><small>scarroccio</small><br><b>${n1(dr.kn)} kn</b> → ${card(dr.to)}</span>`:'');
   const b=$('#windbox');b.classList.toggle('off',!on);b.setAttribute('aria-pressed',on);$('#ly-wind').checked=on;
   windRun();
 }
