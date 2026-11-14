@@ -73,12 +73,12 @@ html{background:var(--bar)}
 #lgbody .key.ln{height:3px;width:14px;vertical-align:3px}
 #lgbody .key.rd{border-radius:50%}
 body.full #legend{top:calc(104px + env(safe-area-inset-top))}
-#mapwhen{position:absolute;left:58px;right:88px;top:10px;z-index:500;display:flex;gap:2px;align-items:center;background:var(--bar);border-radius:8px;padding:2px 8px 2px 4px;box-shadow:0 1px 5px rgba(0,0,0,.4)}
+#mapwhen{position:absolute;left:58px;right:98px;top:10px;z-index:500;display:flex;gap:2px;align-items:center;background:var(--bar);border-radius:8px;padding:2px 8px 2px 4px;box-shadow:0 1px 5px rgba(0,0,0,.4)}
 #mapwhen select{flex:1;min-width:0;background:transparent;color:#fff;border:0;font:600 16px var(--body);min-height:36px;padding:0 2px}
 #mapwhen select option{color:#000}
 #mapscore{color:#fff;font:700 18px var(--display);background:var(--accent);border-radius:6px;padding:1px 7px;font-variant-numeric:tabular-nums}
 body.full #mapwhen{top:calc(10px + env(safe-area-inset-top))}
-#opbtn{position:absolute;right:10px;top:10px;z-index:500;background:var(--card);color:var(--ink);border:2px solid rgba(0,0,0,.25);border-radius:8px;min-height:42px;padding:0 12px;font:600 14px var(--body)}
+#opbtn{position:absolute;right:10px;top:10px;z-index:500;width:80px;box-sizing:border-box;background:var(--card);color:var(--ink);border:2px solid rgba(0,0,0,.25);border-radius:8px;min-height:42px;padding:0;font:600 14px var(--body)}
 #oppanel{position:absolute;right:10px;top:60px;z-index:700;width:min(310px,calc(100% - 20px));max-height:calc(100% - 140px);overflow-y:auto;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:6px;box-shadow:0 3px 12px rgba(0,0,0,.4);font-size:14px}
 #oppanel[hidden]{display:none}
 .lrow{display:grid;grid-template-columns:1fr 92px;align-items:center;gap:8px;min-height:36px}
@@ -101,10 +101,10 @@ body.full #oppanel{top:calc(60px + env(safe-area-inset-top))}
 #instbar{display:flex;gap:8px;align-items:center;margin:8px 12px 0;padding:8px 10px;background:var(--card);border:1px solid var(--line);border-radius:10px;font-size:14px}
 #instbar[hidden]{display:none}
 #instbar span{flex:1}
-#windcv{position:absolute;inset:0;width:100%;height:100%;z-index:450;pointer-events:none}
-#windbox{position:absolute;right:10px;top:60px;z-index:500;width:84px;padding:5px 3px 6px;background:var(--bar);color:#fff;border:0;border-radius:12px;font:500 11.5px/1.25 var(--body);text-align:center;box-shadow:0 1px 5px rgba(0,0,0,.4)}
-#windbox svg{display:block;width:74px;height:74px;margin:0 auto 2px}
-#windbox b{font:700 15px var(--display);font-variant-numeric:tabular-nums}
+#windcv{position:absolute;inset:0;width:100%;height:100%;z-index:500;pointer-events:none}
+#windbox{position:absolute;right:10px;top:60px;z-index:500;width:80px;box-sizing:border-box;padding:5px 2px 6px;background:var(--bar);color:#fff;border:0;border-radius:12px;font:500 11.5px/1.25 var(--body);text-align:center;box-shadow:0 1px 5px rgba(0,0,0,.4)}
+#windbox svg{display:block;width:70px;height:70px;margin:0 auto 2px}
+#windbox b{font:700 14px var(--display);font-variant-numeric:tabular-nums}
 #windbox .dr{color:#8cc4ff}
 #windbox.off #wb-txt{opacity:.7}
 #windbox [hidden]{display:none}
@@ -1653,6 +1653,7 @@ function initInstall(){
   addEventListener('appinstalled',()=>{bar.hidden=true});
 }
 function initWind(){
+  map.getContainer().appendChild($('#windcv'));          // dentro la mappa: sopra la carta, sotto i pulsanti + e −
   const tog=v=>{state.wind=v;save();setWind(WIND.h)};
   $('#windbox').onclick=()=>tog(state.wind===false);
   $('#ly-wind').onchange=e=>tog(e.target.checked);
