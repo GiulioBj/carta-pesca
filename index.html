@@ -111,8 +111,6 @@ body.full #oppanel{top:calc(60px + env(safe-area-inset-top))}
 #windbox small{font-size:11px}
 #windbox.off #wb-txt{opacity:.7}
 #windbox [hidden]{display:none}
-.arrw{pointer-events:none!important}
-.arrw svg{display:block;width:170px;height:170px;overflow:visible;filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))}
 body.full #windbox{top:calc(60px + env(safe-area-inset-top))}
 body.full{overflow:hidden}
 body.full .mapbox{position:fixed;inset:0;height:auto;min-height:0;z-index:2000}
@@ -238,7 +236,7 @@ footer a{color:var(--sea)}
 </head>
 <body>
 <header id="hd">
-  <div class="top"><h1>Carta di pesca <small style="font:400 11px var(--body);opacity:.7;text-transform:none">v25</small></h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
+  <div class="top"><h1>Carta di pesca <small style="font:400 11px var(--body);opacity:.7;text-transform:none">v26</small></h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
   <div class="ctl"><select id="spsel" aria-label="Specie da cercare"></select></div>
   <div class="ctl">
     <div class="seg" role="group" aria-label="Da dove peschi">
@@ -288,7 +286,7 @@ footer a{color:var(--sea)}
         <span><i class="key rd" style="background:#fff;border:2px solid #0e2a3b"></i>punto toccato</span>
         <span><i class="key" style="background:#f2c200;border:1.5px solid #0e2a3b"></i>punto salvato</span>
         <span><i class="key rd" style="background:#1f8a5b"></i>cattura del diario</span>
-        <span><i class="key ln" style="background:#e8590c"></i>vento: da dove arriva (freccia) e dove va (scie)</span>
+        <span><i class="key ln" style="background:#e8590c"></i>vento: dove va (scie)</span>
       </div>
     </div>
     <div id="psheet" hidden><button id="pclose" type="button" aria-label="Chiudi le informazioni sul punto">Chiudi ×</button><div id="pbody"></div></div>
@@ -309,7 +307,6 @@ footer a{color:var(--sea)}
       <div class="lrow"><label><input type="checkbox" id="ly-log"> Le mie catture</label></div>
       <div class="lrow"><label><input type="checkbox" id="ly-sea"> Segnalamenti nautici</label></div>
       <div class="lrow"><label><input type="checkbox" id="ly-wind"> Animazione del vento</label><input type="range" id="op-wind" min="10" max="100" step="5" aria-label="Trasparenza: Animazione del vento"></div>
-      <div class="lrow"><label><input type="checkbox" id="ly-arr"> Freccia del vento sul target</label></div>
       <div class="acts"><button class="btn" id="op-hide" type="button">Nascondi tutto</button><button class="btn pri" id="op-close" type="button">Chiudi</button></div>
       <small>Con il satellite e i livelli abbassati vedi il fondo; rialzali per confrontare.</small>
     </div>
@@ -1499,7 +1496,6 @@ const ISO_LEVELS={1:[2,5,10,15,20,30,50,100,200],2:[1,2,3,5,7,10,12,15,17,20,22,
   3:[.5,1,1.5,2,2.5,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,32,34,36,38,40,45,50,60,75,100,150,200]},ISO_MAIN=[5,10,20,50,100,200];
 const isoCol=lv=>{const t=Math.max(0,Math.min(1,Math.log(lv/.5)/Math.log(400))),m=(a,b)=>Math.round(a+(b-a)*t);return `rgb(${m(70,2)},${m(170,22)},${m(200,40)})`};
 let isoRenderer;
-let arrMarker=null;
 function initMap(){
   map=L.map('map').setView([state.lat,state.lon],13);
   [['heat',410],['nav',420],['osm',430],['iso',440]].forEach(([n,z])=>{const pn=map.createPane(n);pn.style.zIndex=z;if(n!=='osm')pn.style.pointerEvents='none'});
@@ -1516,7 +1512,6 @@ function initMap(){
   LAY={heat:[heatLayer],nav:[navLayer],iso:[isoLayer],osm:[hazLayer,canalLayer],emod:[emodLayer],str:[structLayer],log:[logLayer],fav:[favLayer],spot:[spotLayer],sea:[seaLayer]};
   L.control.scale({imperial:false}).addTo(map);
   refMarker=L.marker([state.lat,state.lon],{draggable:true,zIndexOffset:1000,icon:L.divIcon({className:'',html:'<div class="ref" style="width:26px;height:26px"></div><span class="reflab" style="position:absolute;left:13px;top:12px">TARGET</span>',iconSize:[26,26],iconAnchor:[13,13]})}).addTo(map);
-  arrMarker=L.marker([state.lat,state.lon],{interactive:false,keyboard:false,zIndexOffset:900,icon:L.divIcon({className:'arrw',html:'',iconSize:[170,170],iconAnchor:[85,85]})}).addTo(map);
   areaRect=L.rectangle([[0,0],[0,0]],{color:'#0e2a3b',weight:1.5,dashArray:'6 5',fill:false,interactive:false}).addTo(map);
   refMarker.on('dragend',()=>{const p=refMarker.getLatLng();setPoint(p.lat,p.lng,false)});
   map.on('click',e=>showInfo(e.latlng.lat,e.latlng.lng));
@@ -1787,17 +1782,12 @@ function windRun(){
 }
 function setWind(h){
   WIND.h=h;const g=$('#wb-w'),gd=$('#wb-dr'),ok=h&&h.wind!=null&&h.wdir!=null,dr=h?drift(h):null,on=state.wind!==false;
-  const showDr=false;                                   // sulla bussola e sulla mappa resta solo il vento
-  // vento: freccia arancione che entra dal lato da cui soffia e attraversa la bussola nel verso in cui va
+  const showDr=!!(dr&&dr.kn>=.05&&state.mode==='barca');
+  // vento: freccia arancione che arriva dal bordo, da dove soffia, fino al centro; scarroccio: freccia azzurra che parte dal centro verso dove va la barca
   if(ok&&h.wind>=1){g.removeAttribute('hidden');g.setAttribute('transform','rotate('+(h.wdir%360)+')');
     $('#wb-wp').setAttribute('d',showDr?'M-3.5-40V-20H-11L0-3 11-20H3.5V-40z':'M-3.5-40V14H-11L0 34 11 14H3.5V-40z')}else g.setAttribute('hidden','');
   if(showDr){gd.removeAttribute('hidden');gd.setAttribute('transform','rotate('+dr.to+')')}else gd.setAttribute('hidden','');
   $('#wb-txt').innerHTML=!ok?'vento non disponibile':(h.wind<1?'<b>calma</b>':`<span class="wv"><b>${n0(h.wind)} kn</b> da ${card(h.wdir)}</span>`+(h.gust!=null?`<br><small>raffiche ${n0(h.gust)}</small>`:''))+(showDr?`<span class="dr"><small>scarroccio</small><br><b>${n1(dr.kn)} kn</b> → ${card(dr.to)}</span>`:'');
-  // la stessa freccia del vento anche sulla mappa, accanto al target: arriva dal lato da cui soffia
-  const ae=arrMarker&&arrMarker.getElement();
-  if(ae)ae.innerHTML=state.arrows===false||!ok||h.wind<1?'':`<svg viewBox="-85 -85 170 170" aria-hidden="true" stroke="#0e2a3b" stroke-width="1.3" stroke-linejoin="round">
-    <path transform="rotate(${Math.round(h.wdir)})" d="M-3.5-80V-42H-10L0-24 10-42H3.5V-80z" fill="#ff7a1a"/>
-    ${showDr?`<path transform="rotate(${Math.round(dr.to)})" d="M-3.5-24V-60H-10L0-78 10-60H3.5V-24z" fill="#4fc3ff"/>`:''}</svg>`;
   const b=$('#windbox');b.classList.toggle('off',!on);b.setAttribute('aria-pressed',on);$('#ly-wind').checked=on;
   windRun();
 }
@@ -1815,7 +1805,6 @@ function initWind(){
   const tog=v=>{state.wind=v;save();setWind(WIND.h)};
   $('#windbox').onclick=()=>tog(state.wind===false);
   $('#ly-wind').onchange=e=>tog(e.target.checked);
-  $('#ly-arr').checked=state.arrows!==false;$('#ly-arr').onchange=e=>{state.arrows=e.target.checked;save();setWind(WIND.h)};
   const wo=()=>{const v=state.op.wind==null?100:state.op.wind;$('#windcv').style.opacity=v/100;$('#op-wind').value=v};wo();
   $('#op-wind').oninput=e=>{state.op.wind=+e.target.value;wo();save()};
   const rs=()=>{WIND.ll=null;windSize();windRun()};
@@ -2123,7 +2112,7 @@ async function analyze(){
   const run=++state.run;save();
   const keepT=data&&data.H&&data.H[state.selHour]&&state.selHour>0?data.H[state.selHour].t:null;
   const {lat,lon,R}=state,dLa=R/MLAT,dLo=R/mlon(lat);
-  refMarker.setLatLng([lat,lon]);if(arrMarker)arrMarker.setLatLng([lat,lon]);areaRect.setBounds([[lat-dLa,lon-dLo],[lat+dLa,lon+dLo]]);
+  refMarker.setLatLng([lat,lon]);areaRect.setBounds([[lat-dLa,lon-dLo],[lat+dLa,lon+dLo]]);
   setStatus('Carico batimetria, meteo e mare…');
   const osmR=Math.max(R,6000),pStruct=loadStructs(lat,lon,osmR).catch(()=>null);   // almeno 6 km: copre anche la mappa attorno al raggio
   let [grid,met,hr,maree]=await Promise.all([loadGrid(lat,lon,R,()=>run===state.run).catch(()=>null),loadMeteo(lat,lon).catch(()=>null),loadHR(lat,lon,R).catch(()=>null),loadMaree().catch(()=>null)]);
