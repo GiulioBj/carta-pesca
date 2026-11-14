@@ -238,7 +238,7 @@ footer a{color:var(--sea)}
 </head>
 <body>
 <header id="hd">
-  <div class="top"><h1>Carta di pesca <small style="font:400 11px var(--body);opacity:.7;text-transform:none">v23</small></h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
+  <div class="top"><h1>Carta di pesca <small style="font:400 11px var(--body);opacity:.7;text-transform:none">v24</small></h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
   <div class="ctl"><select id="spsel" aria-label="Specie da cercare"></select></div>
   <div class="ctl">
     <div class="seg" role="group" aria-label="Da dove peschi">
@@ -259,7 +259,7 @@ footer a{color:var(--sea)}
     <div id="map"></div>
     <div id="trackbar" hidden><span><b id="trackbig"></b><br><span id="tracktxt"></span></span><button id="trackstop" type="button">Stop</button></div>
     <canvas id="windcv" aria-hidden="true"></canvas>
-    <button id="windbox" type="button" aria-pressed="true" aria-label="Bussola e vento: tocca per fermare o riavviare l'animazione">
+    <button id="windbox" type="button" aria-pressed="true" aria-label="Bussola e vento: tocca per riportare il nord in alto oppure per fermare o riavviare l'animazione">
       <svg viewBox="-50 -50 100 100" aria-hidden="true">
         <circle r="45" fill="rgba(255,255,255,.07)" stroke="rgba(255,255,255,.6)" stroke-width="1.5"/>
         <g stroke="rgba(255,255,255,.6)" stroke-width="1.5"><path d="M45 0h-6M-45 0h6M0 45v-6"/></g>
@@ -339,6 +339,7 @@ footer a{color:var(--sea)}
   </main>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-rotate@0.6.2/dist/leaflet-rotate.js"></script>
 <script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
 <script>
 'use strict';
@@ -1502,7 +1503,7 @@ const isoCol=lv=>{const t=Math.max(0,Math.min(1,Math.log(lv/.5)/Math.log(400))),
 let isoRenderer;
 let arrMarker=null;
 function initMap(){
-  map=L.map('map').setView([state.lat,state.lon],13);
+  map=L.map('map',{rotate:true,touchRotate:true,rotateControl:false,bearing:0}).setView([state.lat,state.lon],13);
   [['heat',410],['nav',420],['osm',430],['iso',440]].forEach(([n,z])=>{const pn=map.createPane(n);pn.style.zIndex=z;if(n!=='osm')pn.style.pointerEvents='none'});
   const base=BASE={
     'Carta':L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}),
@@ -1760,6 +1761,8 @@ function copyText(txt,okMsg){
   try{navigator.clipboard.writeText(txt).then(()=>setStatus(okMsg),fail)}catch(e){fail()}
 }
 /* ---------- Bussola e vento: il nord è sempre in alto; freccia e scie vanno dove va il vento, nel giorno e nell'ora scelti ---------- */
+// rotazione della mappa in gradi (0 = nord in alto); senza il modulo di rotazione resta 0
+const mapBrg=()=>map&&map.getBearing?map.getBearing()||0:0;
 const WIND={h:null,P:[],raf:0,last:0,w:0,h2:0,ll:null};
 function windSize(){const c=$('#windcv'),r=c.getBoundingClientRect(),k=Math.min(2,window.devicePixelRatio||1);WIND.w=r.width;WIND.h2=r.height;c.width=Math.round(r.width*k);c.height=Math.round(r.height*k);c.getContext('2d').setTransform(k,0,0,k,0,0);
   const n=Math.max(30,Math.min(140,Math.round(r.width*r.height/4200)));WIND.P=Array.from({length:n},()=>({x:Math.random()*r.width,y:Math.random()*r.height,a:Math.random()*4,k:.75+Math.random()*.5}))}
@@ -1772,7 +1775,7 @@ function windTick(t){
   if(WIND.ll){const q=map.latLngToContainerPoint(WIND.ll),dx=q.x-ax,dy=q.y-ay;
     if(Math.abs(dx)>=1||Math.abs(dy)>=1){cx.clearRect(0,0,W,Hh);for(const p of WIND.P){p.x=((p.x+dx)%W+W)%W;p.y=((p.y+dy)%Hh+Hh)%Hh}}}
   WIND.ll=map.containerPointToLatLng([ax,ay]);
-  const to=(h.wdir+180)*RAD,v=18+h.wind*7,vx=Math.sin(to)*v,vy=-Math.cos(to)*v;
+  const to=(h.wdir+180+mapBrg())*RAD,v=18+h.wind*7,vx=Math.sin(to)*v,vy=-Math.cos(to)*v;
   cx.globalCompositeOperation='destination-out';cx.fillStyle='rgba(0,0,0,.09)';cx.fillRect(0,0,W,Hh);cx.globalCompositeOperation='source-over';cx.lineCap='round';
   cx.strokeStyle='rgba(255,255,255,.95)';cx.lineWidth=1.8;cx.shadowColor='rgba(14,42,59,.9)';cx.shadowBlur=3;cx.beginPath();
   for(const p of WIND.P){cx.moveTo(p.x,p.y);cx.lineTo(p.x+vx*p.k*dt,p.y+vy*p.k*dt)}
@@ -1799,6 +1802,7 @@ function setWind(h){
   if(ae)ae.innerHTML=state.arrows===false||!ok||h.wind<1?'':`<svg viewBox="-85 -85 170 170" aria-hidden="true" stroke="#0e2a3b" stroke-width="1.3" stroke-linejoin="round">
     <path transform="rotate(${Math.round(h.wdir)})" d="M-3.5-80V-42H-10L0-24 10-42H3.5V-80z" fill="#ff7a1a"/>
     ${showDr?`<path transform="rotate(${Math.round(dr.to)})" d="M-3.5-24V-60H-10L0-78 10-60H3.5V-24z" fill="#4fc3ff"/>`:''}</svg>`;
+  applyBrg();
   const b=$('#windbox');b.classList.toggle('off',!on);b.setAttribute('aria-pressed',on);$('#ly-wind').checked=on;
   windRun();
 }
@@ -1811,10 +1815,17 @@ function initInstall(){
   $('#instno').onclick=()=>{bar.hidden=true;store.set('cartapesca-noinst',true)};
   addEventListener('appinstalled',()=>{bar.hidden=true});
 }
+// bussola e frecce sul target seguono la rotazione della mappa
+function applyBrg(){
+  const r='rotate('+mapBrg()+'deg)',sv=$('#windbox svg'),ae=arrMarker&&arrMarker.getElement(),as=ae&&ae.querySelector('svg');
+  if(sv)sv.style.transform=r;if(as)as.style.transform=r;
+}
 function initWind(){
   map.getContainer().appendChild($('#windcv'));          // dentro la mappa: sopra la carta, sotto i pulsanti + e −
   const tog=v=>{state.wind=v;save();setWind(WIND.h)};
-  $('#windbox').onclick=()=>tog(state.wind===false);
+  // tocco sulla bussola: se la mappa è ruotata torna con il nord in alto, altrimenti accende o spegne le scie
+  $('#windbox').onclick=()=>{if(Math.abs(mapBrg())>.5&&map.setBearing){map.setBearing(0);return}tog(state.wind===false)};
+  map.on('rotate',()=>{WIND.ll=null;const c=$('#windcv');c.getContext('2d').clearRect(0,0,c.width,c.height);applyBrg()});
   $('#ly-wind').onchange=e=>tog(e.target.checked);
   $('#ly-arr').checked=state.arrows!==false;$('#ly-arr').onchange=e=>{state.arrows=e.target.checked;save();setWind(WIND.h)};
   const wo=()=>{const v=state.op.wind==null?100:state.op.wind;$('#windcv').style.opacity=v/100;$('#op-wind').value=v};wo();

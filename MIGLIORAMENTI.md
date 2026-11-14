@@ -117,6 +117,7 @@ Elenco delle idee emerse dopo la versione 18 (novembre 2026). Le voci da 1 a 6 s
 
 - **Dati nel sito.** Cartella `laguna/`: rilievo della laguna in tre livelli di dettaglio (`0`, `1`, `2`) e `osm.json` con canali, barene, costa e strutture. Sono estratti fatti a novembre 2026 e vanno rigenerati per aggiornarli.
 - **Fuori dalla laguna di Venezia** fondali e strutture arrivano ancora dai servizi esterni (EMODnet a 115 m e OpenStreetMap), con i limiti di precisione e di velocità che ne derivano.
+- **Versioni 21-24.** Marea reale attiva (azione ogni mezz'ora, ramo `dati`), orari al minuto con i ritardi pubblicati dal Centro Maree, confronto con le tabelle astronomiche, misure di livello, vento e acqua solo da stazioni vicine al target, frecce di vento e scarroccio sul target, "Oggi" sempre di 24 ore, mappa ruotabile con due dita (modulo leaflet-rotate) e ritorno a nord dalla bussola. La rotazione con le dita non è stata provata su un telefono vero.
 - **Versione 20 provata solo con dati simulati.** Meteo, marea e misure sono stati simulati nei formati reali; con i dati veri vanno ricontrollati soprattutto orari della marea (ora solare e ora legale) e nome del secondo modello meteo (`gfs_seamless`).
 - **Installazione su Android non provata su un telefono vero.** Manifest, icone e service worker sono stati controllati solo in un browser da computer.
 - **Non provato su iPhone vero.** Layout e caricamenti sono stati verificati in un browser che simula l'iPhone 17 Pro; il comportamento su Safari va confermato a ogni versione.
