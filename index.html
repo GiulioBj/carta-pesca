@@ -24,8 +24,33 @@
   --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
   --body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 }
-:root.night{--ink:#f0c4bb;--paper:#0d0404;--card:#1a0908;--sea:#d9665b;--accent:#b8271c;--bar:#070202;--line:#3b1512;--muted:#b38079;--good:#d9665b;--warn:#ff5a4a;--low:#4a1c18;--goodbg:#2a0f0d;--warnbg:#3a0f0c;color-scheme:dark}
-:root.night .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.75) sepia(.6) saturate(1.6) hue-rotate(-35deg)}
+:root.night{--ink:#f1d6cf;--paper:#0a0606;--card:#150c0b;--sea:#b8584c;--accent:#d2402f;--bar:#060303;--line:#2d1a17;--muted:#a07f77;--good:#e08a7c;--warn:#ff6b57;--low:#3a1d19;--goodbg:#26110e;--warnbg:#3d120e;color-scheme:dark}
+/* Notte: tutto sul rosso scuro per non abbagliare al buio; niente bianchi pieni, mappa e livelli attenuati */
+:root.night .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.7) sepia(.65) saturate(1.5) hue-rotate(-35deg)}
+:root.night #map{background:#140b0a}
+:root.night .leaflet-heat-pane,:root.night .leaflet-nav-pane,:root.night .leaflet-osm-pane,:root.night .leaflet-iso-pane,:root.night .leaflet-overlay-pane{filter:brightness(.75) saturate(.85)}
+:root.night .leaflet-marker-pane{filter:brightness(.82) sepia(.25)}
+:root.night #windcv{filter:sepia(.7) brightness(.8)}
+:root.night header{border-bottom:1px solid var(--line)}
+:root.night header,:root.night .top h1{color:var(--ink)}
+:root.night .top button{color:var(--ink);border-color:rgba(241,214,207,.28)}
+:root.night .seg{border-color:rgba(241,214,207,.22)}
+:root.night .seg button{color:var(--muted)}
+:root.night .seg button[aria-pressed="true"]{background:#3b1814;color:var(--ink)}
+:root.night header select{border-color:rgba(241,214,207,.22)}
+:root.night .opt[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+:root.night .card,:root.night .sum,:root.night .tile,:root.night #instbar{background:linear-gradient(180deg,#190e0c,#120a09);box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
+:root.night .tabs{background:#0e0807;box-shadow:0 -6px 18px rgba(0,0,0,.6)}
+:root.night .leaflet-bar{border-color:rgba(241,214,207,.2)!important}
+:root.night .leaflet-bar a{background:#1a0f0d;color:var(--ink);border-bottom-color:var(--line)}
+:root.night .leaflet-control-scale-line{background:rgba(10,6,6,.7);color:var(--ink);border-color:var(--muted);text-shadow:none}
+:root.night .leaflet-control-attribution{background:rgba(10,6,6,.6)!important;color:var(--muted)}
+:root.night .leaflet-control-attribution a{color:var(--muted)}
+:root.night .leaflet-popup-content-wrapper,:root.night .leaflet-popup-tip{background:var(--card);color:var(--ink)}
+:root.night #opbtn,:root.night #fs{background:#1a0f0d;color:var(--ink);border-color:rgba(241,214,207,.25)}
+:root.night #mapwhen,:root.night #windbox{background:#0c0605;box-shadow:0 0 0 1px rgba(241,214,207,.14),0 2px 8px rgba(0,0,0,.5)}
+:root.night #mapwhen select,:root.night #windbox{color:var(--ink)}
+:root.night .reflab{background:#1a0f0d;color:var(--ink)}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
 body{background:var(--bar);color:var(--ink);font:400 15px/1.45 var(--body)}
@@ -63,7 +88,7 @@ html{background:var(--bar)}
 #setpt{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);z-index:500;background:var(--accent);color:#fff;border:2px solid #fff;border-radius:999px;
   min-height:44px;padding:0 16px;font:600 15px var(--body);box-shadow:0 2px 8px rgba(0,0,0,.4);white-space:nowrap}
 #legend{position:absolute;left:10px;top:104px;z-index:500;max-width:172px;background:rgba(255,255,255,.9);color:#0e2a3b;border:1px solid rgba(0,0,0,.25);border-radius:8px;font-size:11.5px;line-height:1.25;overflow:hidden}
-:root.night #legend{background:rgba(26,9,8,.9);color:var(--ink)}
+:root.night #legend{background:rgba(21,12,11,.92);color:var(--ink);border-color:rgba(241,214,207,.2)}
 #lgbtn{display:block;width:100%;background:none;border:0;min-height:40px;padding:0 9px;font:600 12.5px var(--body);text-align:left;color:inherit}
 #lgbtn::after{content:" ×";float:right;font-weight:400}
 #legend.closed #lgbtn::after{content:" +"}
@@ -236,7 +261,7 @@ footer a{color:var(--sea)}
 </head>
 <body>
 <header id="hd">
-  <div class="top"><h1>Carta di pesca <small style="font:400 11px var(--body);opacity:.7;text-transform:none">v26</small></h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
+  <div class="top"><h1>Carta di pesca <small style="font:400 11px var(--body);opacity:.7;text-transform:none">v27</small></h1><span><button id="srchbtn" type="button" aria-expanded="false">Cerca</button><button id="gps" type="button" aria-label="Usa la mia posizione">GPS</button><button id="night" type="button" aria-pressed="false">Notte</button></span></div>
   <div class="ctl"><select id="spsel" aria-label="Specie da cercare"></select></div>
   <div class="ctl">
     <div class="seg" role="group" aria-label="Da dove peschi">
@@ -1845,12 +1870,19 @@ function render(){
     <p><b>${isNow?'Adesso':'A quell\'ora'}:</b> ${esc(adv.lure[0])}${adv.colors[0]?', colore '+PAL[adv.colors[0][0]].n.toLowerCase():''}.</p>
     <div class="acts" style="margin-top:8px"><button class="btn" id="share" type="button">Copia riepilogo</button></div><textarea id="copybox" hidden rows="5" style="width:100%;margin-top:8px"></textarea>`;
   $('#share').onclick=()=>{
-    const s0=spots[0],t=[`${S.name} · ${coord(d.lat,d.lon)}`,
-      best?`Finestra migliore: ${dayName(Hd[best.a].t)} ${hh(Hd[best.a].t)}–${hh(Hd[best.b].t+36e5)}`:'',
-      `${dayName(now.t)} ${hh(now.t)}: vento ${n0(now.wind)} kn ${card(now.wdir)}, onda ${n1(now.wave)} m, acqua ${n1(now.sst)} °C (${now.clar}), attività ${now.score}/100`,
-      s0?`Spot 1: ${coord(s0.la,s0.lo)}, fondale ${n1(s0.dep)} m`:'',
-      `Esca: ${adv.lure[0]}${adv.colors[0]?' · '+PAL[adv.colors[0][0]].n:''}`].filter(Boolean).join('\n');
-    copyText(t,'Riepilogo copiato: incollalo in chat.');
+    // testo pensato per WhatsApp: *grassetto*, _corsivo_, una riga per informazione, link a Google Maps
+    const s0=spots[0],ex=tideExtremes(Hd).slice(0,2),L=[];
+    L.push(`🎣 *${S.name}* · ${state.mode==='barca'?'dalla barca':'da riva'}`,`📍 ${gmaps(d.lat,d.lon)}`);
+    if(best){L.push('','⭐ *Finestra migliore*',`${dayName(Hd[best.a].t)} ${hh(Hd[best.a].t)}–${hh(Hd[best.b].t+36e5)} · attività ${Math.round(best.avg)}/100`);if(best.why.size)L.push('_'+[...best.why].slice(0,4).join(', ')+'_')}
+    L.push('',`🕐 *${dayName(now.t)} ore ${hh(now.t)}* · attività ${now.score}/100`);
+    if(now.wind!=null)L.push(`💨 Vento ${n0(now.wind)} kn da ${card(now.wdir)}${now.gust!=null?', raffiche '+n0(now.gust):''}`);
+    if(now.wave!=null||now.sst!=null)L.push('🌊 '+[now.wave!=null?'Onda '+n1(now.wave)+' m':null,now.sst!=null?'acqua '+n1(now.sst)+' °C, '+now.clar:null].filter(Boolean).join(' · '));
+    if(ex.length)L.push('↕️ Marea: '+ex.map(e=>(e.hi?'alta ':'bassa ')+hh(e.t)).join(', '));
+    L.push('',`🪝 *Esca:* ${adv.lure[0]}${adv.colors[0]?', '+PAL[adv.colors[0][0]].n.toLowerCase():''}`);
+    if(s0)L.push('',`🎯 *Spot consigliato* · fondale ${n1(s0.dep)} m`,gmaps(s0.la,s0.lo));
+    L.push('','_Carta di pesca_ · '+location.origin+location.pathname);
+    const t=L.join('\n');
+    copyText(t,'Riepilogo copiato: incollalo su WhatsApp.');
   };
   if(infoLL){const b=$('#pbody');b.innerHTML='';b.appendChild(pointInfo(infoLL[0],infoLL[1]))}
   fsInfo();renderSpots(spots,S,sel);renderPiano(H,S);renderMare(H,d);renderEsca(S,H);renderDiario();
